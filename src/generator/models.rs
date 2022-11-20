@@ -24,31 +24,9 @@ impl Display for HttpMethod {
     }
 }
 
-/// Any definition
-#[derive(Debug, Serialize, Deserialize)]
-pub enum Definition {
-    Struct(types::Struct),
-    Enum(types::Enum),
-    ApiError(types::ApiError),
-}
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Namespace {
-    pub definitions: Vec<Definition>,
-}
 
-impl Namespace {
-    pub fn new() -> Self {
-        Namespace {
-            definitions: Vec::new(),
-        }
-    }
-    pub fn add_struct(&mut self, data: types::Struct) -> types::StructRef {
-        let ref_name = data.name.clone();
-        self.definitions.push(Definition::Struct(data));
-        types::StructRef(ref_name)
-    }
-}
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Operation {
@@ -57,13 +35,13 @@ pub struct Operation {
     pub method: HttpMethod, // Operation method
 
     pub doc: Option<String>,
-    pub param_path: Option<StructRef>,  // web::Path
-    pub param_query: Option<StructRef>, // web::Query
-    pub param_body: Option<StructRef>,  // web::Json
+    pub param_path: Option<String>,  // web::Path
+    pub param_query: Option<String>, // web::Query
+    pub param_body: Option<String>,  // web::Json
 
     // Response
     // -----------------------------
-    pub response: Option<types::Any>,
+    pub response: Option<String>,
     pub error: Option<ApiErrRef>, // Error type
 }
 
@@ -74,6 +52,5 @@ pub struct ApiService {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RustModule {
-    pub namespace: Namespace,
     pub api: ApiService,
 }

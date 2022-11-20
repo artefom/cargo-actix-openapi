@@ -5,12 +5,12 @@ use serde_yaml;
 
 use anyhow::{bail, Context, Result};
 
-use self::models::{types::Struct, Namespace};
-
 mod models;
 mod utils;
 
 use convert_case::{Case, Casing};
+
+use self::models::types::RStruct;
 
 fn get_query_params_struct_name(op_id: &String) -> String {
     format!("{}Query", op_id.to_case(Case::UpperCamel))
@@ -63,30 +63,17 @@ fn get_path_params<'a>(
 }
 
 /// Convert parameters into rust struct and return reference
-fn to_rust_struct(title: &str, params: &Vec<&openapiv3::Parameter>) -> Option<Struct> {
+fn to_rust_struct(params: &Vec<openapiv3::Parameter>) -> Option<RStruct> {
     if params.len() == 0 {
         return None;
     };
 
-    let fields = Vec::new();
+    let fields = HashMap::new();
 
-    Some(Struct {
-        name: title.to_string(),
-        fields: fields,
-    })
-}
-
-/// Convert parameters into rust struct and return reference
-fn to_rust_structref(
-    namespace: &mut models::Namespace,
-    title: &str,
-    params: &Vec<&openapiv3::Parameter>,
-) -> Option<StructRef> {
-    to_rust_struct(title, params).and_then(|x| Some(namespace.add_struct(x)))
+    Some(RStruct { properties: fields })
 }
 
 fn to_rust_operation(
-    namespace: &mut models::Namespace,
     components: &Option<Components>,
     path: &str,
     method: models::HttpMethod,
@@ -115,19 +102,21 @@ fn to_rust_operation(
     let path_parameters = get_path_params(global_params, &method_params);
     let query_parameters = get_query_params(global_params, &method_params);
 
-    // Create and register path params struct
-    let path_params = to_rust_structref(
-        namespace,
-        &get_path_params_struct_name(name),
-        &path_parameters,
-    );
+    // // Create and register path params struct
+    // let path_params = to_rust_structref(
+    //     &get_path_params_struct_name(name),
+    //     &path_parameters,
+    // );
 
-    // Create and register query params struct
-    let query_params = to_rust_structref(
-        namespace,
-        &&get_query_params_struct_name(name),
-        &query_parameters,
-    );
+    // // Create and register query params struct
+    // let query_params = to_rust_structref(
+    //     &&get_query_params_struct_name(name),
+    //     &query_parameters,
+    // );
+
+    let path_params = None;
+    let query_params = None;
+    let param_body = None;
 
     Ok(models::Operation {
         name: name.clone(),
@@ -137,7 +126,7 @@ fn to_rust_operation(
         doc: doc,
         param_path: path_params,
         param_query: query_params,
-        param_body: None,
+        param_body: param_body,
 
         // Response
         // -----------------------------
@@ -169,8 +158,6 @@ fn to_operation_map(
 pub fn to_rust_module(spec: &OpenAPI) -> Result<models::RustModule> {
     let mut operations = Vec::new();
 
-    let mut namespace = Namespace::new();
-
     for (path, path_item) in spec.paths.iter() {
         let path_item = utils::deref(&spec.components, path_item);
         let global_params: Vec<&openapiv3::Parameter> = path_item
@@ -180,26 +167,18 @@ pub fn to_rust_module(spec: &OpenAPI) -> Result<models::RustModule> {
             .collect();
         for (method, operation) in to_operation_map(path_item) {
             operations.push(
-                to_rust_operation(
-                    &mut namespace,
-                    &spec.components,
-                    path,
-                    method,
-                    operation,
-                    &global_params,
-                )
-                .with_context(|| {
-                    format!(
-                        "Could not convert to rust operation at {} {}",
-                        &method, &path
-                    )
-                })?,
+                to_rust_operation(&spec.components, path, method, operation, &global_params)
+                    .with_context(|| {
+                        format!(
+                            "Could not convert to rust operation at {} {}",
+                            &method, &path
+                        )
+                    })?,
             );
         }
     }
 
     Ok(models::RustModule {
-        namespace: namespace,
         api: models::ApiService {
             operations: operations,
         },
