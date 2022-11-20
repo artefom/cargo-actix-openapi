@@ -7,14 +7,15 @@ use serde::{Deserialize, Serialize};
 
 use anyhow::{bail, Result};
 
-struct DefinitionStore<'a> {
-    store: Vec<Definition<'a>>,
+struct DefinitionStore {
+    store: Vec<Rc<Definition>>,
 }
 
-impl<'a> DefinitionStore<'a> {
-    fn add_definition(&'a mut self, data: Definition<'a>) -> &'a Definition<'a> {
-        self.store.push(data);
-        self.store.last().unwrap()
+impl DefinitionStore {
+    fn add_definition(&mut self, data: Definition) -> Rc<Definition> {
+        let data = Rc::new(data);
+        self.store.push(data.clone());
+        data
     }
 }
 
@@ -26,29 +27,29 @@ pub enum Scalar {
 }
 
 /// Arbitrary inline type
-pub enum InlineType<'a> {
+pub enum InlineType {
     Scalar(Scalar),
-    Array(Box<InlineType<'a>>),
-    Map(Box<InlineType<'a>>),
-    Reference(&'a Definition<'a>),
+    Array(Box<InlineType>),
+    Map(Box<InlineType>),
+    Reference(Rc<Definition>),
 }
 
-pub struct RStruct<'a> {
-    pub properties: HashMap<String, InlineType<'a>>,
+pub struct RStruct {
+    pub properties: HashMap<String, InlineType>,
 }
 
 pub struct REnum {
     variants: Vec<String>,
 }
 
-enum DefinitionData<'a> {
-    Struct(RStruct<'a>),
+pub enum DefinitionData {
+    Struct(RStruct),
     Enum(REnum),
 }
 
-struct Definition<'a> {
-    name: String,
-    data: DefinitionData<'a>,
+pub struct Definition {
+    pub name: String,
+    pub data: DefinitionData,
 }
 
 fn get_schema_name(title: &Option<String>) -> Result<&String> {
@@ -77,26 +78,27 @@ pub struct Definable<'a> {
     data: DefinableData<'a>,
 }
 
-fn make_definition<'a>(
-    components: &'a Option<Components>,
-    definable: Definable<'a>,
-) -> Result<(Definition<'a>, Vec<Definition<'a>>)> {
+fn make_definition(
+    components: &Option<Components>,
+    definable: Definable,
+    store: &mut DefinitionStore,
+) -> Result<Definition> {
     match definable.data {
         DefinableData::Object(obj) => {
-            let (definition, inner) = get_definition(components, definable.name, obj)?;
-            Ok((definition, inner))
+            let definition = get_definition(components, definable.name, obj, store)?;
+            Ok(definition)
         }
     }
 }
 
-fn to_inline<'a>(
-    components: &'a Option<Components>,
-    schema: &'a ReferenceOr<Box<Schema>>,
-) -> Result<(InlineType<'a>, Vec<Definition<'a>>)> {
+fn to_inline<'a, 'b>(
+    components: &Option<Components>,
+    schema: &ReferenceOr<Box<Schema>>,
+    store: &mut DefinitionStore,
+) -> Result<InlineType> {
     let schema = deref(components, schema);
 
     let SchemaKind::Type(schema_type) = &schema.schema_kind else {panic!("Nice")};
-    let mut definitions = Vec::new();
 
     let itype = match schema_type {
         Type::String(val) => InlineType::Scalar(Scalar::String),
@@ -110,34 +112,34 @@ fn to_inline<'a>(
                 data: DefinableData::Object(val),
             };
 
-            let (definition, more_defs) = make_definition(components, definable)?;
+            let def_made = make_definition(components, definable, store)?;
 
-            InlineType::Reference(&definition)
+            let definition = store.add_definition(def_made);
+
+            InlineType::Reference(definition)
         }
         Type::Array(val) => {
             let Some(items) = &val.items else {
                 bail!("Array items must not be null")
             };
-            let (new_inline, more_defs) = to_inline(components, items)?;
-            definitions.extend(more_defs.into_iter());
+            let new_inline = to_inline(components, items, store)?;
             InlineType::Array(Box::new(new_inline))
         }
     };
-    Ok((itype, definitions))
+    Ok(itype)
 }
 
 /// Returns definition and hashmap of inner schemas to render later
-fn get_definition<'a>(
-    components: &'a Option<Components>,
+fn get_definition(
+    components: &Option<Components>,
     name: String,
-    val: &'a ObjectType,
-) -> Result<(Definition<'a>, Vec<Definition<'a>>)> {
-    let mut inner = Vec::new();
+    val: &ObjectType,
+    store: &mut DefinitionStore,
+) -> Result<Definition> {
     let mut properties = HashMap::new();
 
     for (prop_name, prop_schema) in val.properties.iter() {
-        let (itype, definitions) = to_inline(components, prop_schema)?;
-        inner.extend(definitions.into_iter());
+        let itype = to_inline(components, prop_schema, store)?;
 
         properties.insert(prop_name.clone(), itype);
     }
@@ -149,7 +151,7 @@ fn get_definition<'a>(
         }),
     };
 
-    Ok((definition, inner))
+    Ok(definition)
 }
 
 // trait NestedType {
