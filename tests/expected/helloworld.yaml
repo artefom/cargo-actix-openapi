@@ -1,15 +1,10 @@
-namespace:
-  definitions:
-  - !Struct
-    name: GreetUserPath
-    fields: []
 api:
   operations:
   - name: greet_user
     path: /hello/{user}
     method: Get
     doc: Returns a greeting to the user!
-    param_path: GreetUserPath
+    param_path: null
     param_query: null
     param_body: null
     response: null
