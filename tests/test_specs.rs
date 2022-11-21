@@ -11,9 +11,16 @@ use rstest::rstest;
 static OVERWRITE: bool = true;
 
 fn compare(name: &str, got: &String, expected: Option<&String>) {
-    let Some(expected) = expected else {
-        assert_eq!(expected, Some(got));
-        return
+    let expected = match expected {
+        Some(value) => value,
+        None => {
+            if OVERWRITE == true {
+                save_expected(name, &got).expect("Could not save expected");
+                got
+            } else {
+                panic!("Could not get expected result")
+            }
+        }
     };
 
     if expected != got && OVERWRITE {
@@ -25,6 +32,8 @@ fn compare(name: &str, got: &String, expected: Option<&String>) {
 
 #[rstest]
 #[case("helloworld")]
+#[case("request_body")]
+#[case("request_body_nested")]
 fn test_specs(#[case] case_name: &str) -> Result<()> {
     let data = common::load_openapi_case(case_name).expect("Could not read test case");
 

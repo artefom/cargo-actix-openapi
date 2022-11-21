@@ -3,6 +3,7 @@
 #![allow(unused_variables)]
 
 mod generator;
+mod openapictx;
 
 use anyhow::Result;
 

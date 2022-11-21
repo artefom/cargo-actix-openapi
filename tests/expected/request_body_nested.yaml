@@ -4,13 +4,23 @@ api:
     data: !Struct
       properties:
         user: String
+  - name: GreetUserBodyObj
+    data: !Struct
+      properties:
+        foo: i64
+        bar: f64
+  - name: GreetUserBody
+    data: !Struct
+      properties:
+        str: String
+        obj: GreetUserBodyObj
   operations:
   - name: greet_user
     path: /hello/{user}
-    method: Get
+    method: Post
     doc: Returns a greeting to the user!
     param_path: web::Path<GreetUserPath>
     param_query: null
-    param_body: null
+    param_body: web::Json<GreetUserBody>
     response: null
     error: null

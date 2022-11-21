@@ -7,10 +7,10 @@ api:
   operations:
   - name: greet_user
     path: /hello/{user}
-    method: Get
+    method: Post
     doc: Returns a greeting to the user!
     param_path: web::Path<GreetUserPath>
     param_query: null
-    param_body: null
+    param_body: web::Json<String>
     response: null
     error: null
