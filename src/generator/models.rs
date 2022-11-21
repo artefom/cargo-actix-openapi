@@ -44,8 +44,7 @@ pub struct Operation {
 
     // Response
     // -----------------------------
-    pub response: Option<String>,
-    pub error: Option<ApiErrRef>, // Error type
+    pub response: InlineType,
 }
 
 fn serialize_def_vec<S>(data: &Vec<Rc<Definition>>, s: S) -> Result<S::Ok, S::Error>
@@ -133,6 +132,10 @@ fn to_rust_operation(
         .request_body
         .inline(format!("{name_upper}Body"), defmaker)?;
 
+    let response = operation
+        .responses
+        .inline(format!("{name_upper}Response"), defmaker)?;
+
     Ok(Operation {
         name: name.clone(),
         path: path.to_string(),
@@ -145,8 +148,7 @@ fn to_rust_operation(
 
         // Response
         // -----------------------------
-        response: None,
-        error: None,
+        response: response,
     })
 }
 

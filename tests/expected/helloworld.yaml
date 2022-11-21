@@ -12,5 +12,4 @@ api:
     param_path: web::Path<GreetUserPath>
     param_query: null
     param_body: null
-    response: null
-    error: null
+    response: web::Json<String>

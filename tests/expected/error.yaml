@@ -4,6 +4,11 @@ api:
     data: !Struct
       properties:
         user: String
+  - name: GreetUserResponseError
+    data: !ApiErr
+      variants:
+      - detail: Not found
+        code: NOT_FOUND
   operations:
   - name: greet_user
     path: /hello/{user}
@@ -12,4 +17,4 @@ api:
     param_path: web::Path<GreetUserPath>
     param_query: null
     param_body: null
-    response: web::Json<String>
+    response: Result<web::Json<String>,GreetUserResponseError>
