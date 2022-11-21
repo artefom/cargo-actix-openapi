@@ -44,10 +44,6 @@ pub struct OpenApiCtx<'a> {
     components: &'a Option<Components>, // Used for dereferencing references
 }
 
-pub trait GenericParameter {
-    fn data(&self) -> &ParameterData;
-}
-
 pub struct QueryParameter<'a> {
     pub parameter_data: &'a ParameterData,
     pub allow_reserved: &'a bool,
@@ -55,20 +51,8 @@ pub struct QueryParameter<'a> {
     pub allow_empty_value: &'a Option<bool>,
 }
 
-impl<'a> GenericParameter for QueryParameter<'a> {
-    fn data(&self) -> &ParameterData {
-        self.parameter_data
-    }
-}
-
 pub struct HeaderParaemter<'a> {
     pub parameter_data: &'a ParameterData,
-}
-
-impl<'a> GenericParameter for HeaderParaemter<'a> {
-    fn data(&self) -> &ParameterData {
-        self.parameter_data
-    }
 }
 
 pub struct PathParameter<'a> {
@@ -76,20 +60,8 @@ pub struct PathParameter<'a> {
     pub style: &'a PathStyle,
 }
 
-impl<'a> GenericParameter for PathParameter<'a> {
-    fn data(&self) -> &ParameterData {
-        self.parameter_data
-    }
-}
-
 pub struct CookieParameter<'a> {
     pub parameter_data: &'a ParameterData,
-}
-
-impl<'a> GenericParameter for CookieParameter<'a> {
-    fn data(&self) -> &ParameterData {
-        self.parameter_data
-    }
 }
 
 pub struct ParametersSplitted<'a> {

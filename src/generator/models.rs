@@ -7,7 +7,7 @@ use anyhow::{bail, Context, Result};
 
 use crate::openapictx::{OpenApiCtx, ToSchema};
 
-use self::types::{Definition, DefinitionMaker, InlineType};
+use self::types::{Definition, DefinitionMaker, InlineType, Inlining, MaybeInlining};
 
 /// Reference to ApiErr definition
 #[derive(Debug, Serialize)]
@@ -113,15 +113,13 @@ fn to_rust_operation(
 
     let params_spliited = ctx.split_parameters(global_params, &operation.parameters);
 
-    let path_params_inline = defmaker.params_to_inline(
-        format!("{name_upper}Path"),
-        &params_spliited.path_parameters,
-    )?;
+    let path_params_inline = params_spliited
+        .path_parameters
+        .inline(format!("{name_upper}Path"), defmaker)?;
 
-    let query_params_inline = defmaker.params_to_inline(
-        format!("{name_upper}Query"),
-        &params_spliited.query_parameters,
-    )?;
+    let query_params_inline = params_spliited
+        .query_parameters
+        .inline(format!("{name_upper}Query"), defmaker)?;
 
     if params_spliited.header_parameters.len() != 0 {
         bail!("Header parameters not supported")
@@ -131,14 +129,9 @@ fn to_rust_operation(
         bail!("Cookie parameters not supported")
     };
 
-    let param_body = match &operation.request_body {
-        Some(value) => {
-            let body = ctx.deref(value);
-            let inline = defmaker.to_inline(format!("{name_upper}Body"), body.to_schema(ctx)?);
-            Some(InlineType::Json(Box::new(inline)))
-        }
-        None => None,
-    };
+    let param_body = operation
+        .request_body
+        .inline(format!("{name_upper}Body"), defmaker)?;
 
     Ok(Operation {
         name: name.clone(),

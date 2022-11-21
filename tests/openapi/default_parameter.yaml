@@ -11,26 +11,11 @@ paths:
         description: The name of the user to greet.
         schema:
           type: string
-    
-    post:
+          default: 'World'
+    get:
       operationId: greet_user
       summary: Returns a greeting to the user!
       description: Some detailed description
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                str:
-                  type: string
-                obj:
-                  type: object
-                  properties:
-                    foo:
-                      type: integer
-                    bar:
-                      type: number
       responses:
         200:
           description: Returns the greeting.
