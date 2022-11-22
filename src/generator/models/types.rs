@@ -18,8 +18,8 @@ use serde::{Serialize, Serializer};
 use anyhow::{bail, Result};
 
 use crate::openapictx::{
-    CookieParameter, HeaderParaemter, OpenApiCtx, ParameterStore, ParametersType, PathParameter,
-    QueryParameter, ToSchema,
+    CookieParameter, Dereferencing, HeaderParaemter, OpenApiCtx, ParameterStore, ParametersType,
+    PathParameter, QueryParameter, ToSchema,
 };
 
 pub trait GenericParameter {
@@ -68,10 +68,10 @@ where
 
 impl<T> MaybeInlining for ReferenceOr<T>
 where
-    T: MaybeInlining,
+    T: MaybeInlining + Dereferencing<T>,
 {
     fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<Option<InlineType>> {
-        let deref = defmaker.ctx.deref(self);
+        let deref = defmaker.ctx.deref(self)?;
         deref.inline(name, defmaker)
     }
 }
@@ -82,10 +82,10 @@ pub trait Inlining {
 
 impl<T> Inlining for ReferenceOr<T>
 where
-    T: Inlining,
+    T: Inlining + Dereferencing<T>,
 {
     fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
-        let deref = defmaker.ctx.deref(self);
+        let deref = defmaker.ctx.deref(self)?;
         deref.inline(name, defmaker)
     }
 }
@@ -179,7 +179,7 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
         for (status_code, response) in self {
             let status = status_to_string(status_code)?;
 
-            let response = defmaker.ctx.deref(response);
+            let response = defmaker.ctx.deref(response)?;
             let schema = response.content.to_schema(defmaker.ctx)?;
             let schema = match &schema.schema_kind {
                 SchemaKind::Type(value) => value,
@@ -200,6 +200,7 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
                 };
 
                 api_err_variants.push(ApiErrVariant {
+                    name: variant.to_case(Case::UpperCamel),
                     detail: variant.clone(),
                     code: status.clone(),
                 });
@@ -352,7 +353,7 @@ impl Inlining for Schema {
             Type::Array(val) => {
                 let new_inline = match &val.items {
                     Some(value) => {
-                        let deref = defmaker.ctx.deref(value);
+                        let deref = defmaker.ctx.deref_boxed(value)?;
                         deref.inline(format!("{name}Item"), defmaker)?
                     }
                     None => InlineType::Any,
@@ -369,7 +370,7 @@ impl Inlining for ObjectType {
         let mut properties = IndexMap::new();
 
         for (prop_name, prop_schema) in self.properties.iter() {
-            let prop_schema = defmaker.ctx.deref(prop_schema);
+            let prop_schema = defmaker.ctx.deref_boxed(prop_schema)?;
             let prop_name_camel = prop_name.to_case(Case::UpperCamel);
             let itype = prop_schema.inline(format!("{name}{prop_name_camel}"), defmaker)?;
             properties.insert(prop_name.clone(), itype);
@@ -460,8 +461,9 @@ pub struct RStruct {
 
 #[derive(Debug, Serialize)]
 pub struct ApiErrVariant {
-    detail: String,
-    code: String,
+    name: String,   // Rust name of the variant
+    detail: String, // How it is printed
+    code: String,   // What is the code
 }
 
 /// Something that can serialize into api error

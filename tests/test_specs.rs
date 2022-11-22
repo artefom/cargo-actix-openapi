@@ -36,6 +36,7 @@ fn compare(name: &str, got: &String, expected: Option<&String>) {
 #[case("request_body_nested")]
 #[case("default_parameter")]
 #[case("error")]
+#[case("reference")]
 fn test_specs(#[case] case_name: &str) -> Result<()> {
     let data = common::load_openapi_case(case_name).expect("Could not read test case");
 

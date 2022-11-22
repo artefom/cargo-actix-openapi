@@ -1,0 +1,354 @@
+---
+openapi: 3.0.3
+info:
+  title: ratelimit
+  version: 1.0.0
+  description: |
+    Limits rates (with Rust)
+    Implements Leaky bucket using Generic cell rate algorithm (GCRA).
+    Allows for request bursts.
+servers:
+  - url: ./
+paths:
+  '/health':
+    get:
+      tags:
+        - health
+      summary: Check service health
+      operationId: health
+      responses:
+        '200':
+          description: 'Service is ready'
+          content:
+            application/json:
+              schema:
+                type: string
+                default: 'Ok'
+  '/quota':
+    get:
+      tags:
+        - quota
+      summary: List quotas
+      operationId: quota_list
+      responses:
+        '200':
+          description: List of all quotas
+          content:
+            application/json:
+              schema:
+                title: Response Quota List Quota Get
+                type: array
+                items:
+                  type: string
+                example:
+                  - megb
+                  - testquota
+                  - anotherquota
+  '/quota/{quota}':
+    get:
+      tags:
+        - quota
+      summary: Get quota details
+      operationId: quota_details
+      parameters:
+        - $ref: '#/components/parameters/quota'
+      responses:
+        '200':
+          description: Quota details, including current rpm and GCRA state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuotaDetails'
+        '404':
+          description: Quota not found
+          content:
+            application/json:
+              schema:
+                title: Details
+                type: string
+                enum: ['Quota not found']
+  '/cell/test':
+    get:
+      tags:
+        - rate limiting
+      summary: Get current rate limitation state for given query
+      description: |
+        Allows to probe for rate limits without updating quota states.
+        Usefull for monitoring.
+      operationId: cell_test
+      parameters:
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CellDetails'
+        '400':
+          description: Duplicate key in query
+          content:
+            application/json:
+              schema:
+                title: Details
+                type: string
+                enum: ['Duplicate query key']
+        '404':
+          description: No quotas matching given query found
+          content:
+            application/json:
+              schema:
+                title: Details
+                type: string
+                enum: ['No quotas matching query found']
+  '/cell/update':
+    post:
+      tags:
+        - rate limiting
+      summary: Try to accomodate for one request
+      description: |
+        Will update states of all quotas that match given query.
+        Strictest rate limitation of all matched queries applies
+      operationId: cell_update
+      parameters:
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateResult'
+        '400':
+          description: Duplicate key in query
+          content:
+            application/json:
+              schema:
+                title: Details
+                type: string
+                enum: ['Duplicate query key']
+        '404':
+          description: No quotas matching given query found
+          content:
+            application/json:
+              schema:
+                title: Details
+                type: string
+                enum: ['No quotas matching query found']
+components:
+  parameters:
+    quota:
+      name: quota
+      required: true
+      description: Quota label - Unique quota identifier
+      in: path
+      schema:
+        title: Quota
+        type: string
+        example: testquota
+    query:
+      name: query
+      description: |
+        Query that will be matched against quotas
+
+        # Matching rules
+        ---------------
+
+        Quota matches the query if at least one of it's predicates (match section) matches the query.
+        Predicate matches query if all its key/values are present and match key/values of the request query.
+        If query key is not present in the predicate, it is disregarded.
+
+        ## Example:
+
+        given predicate:
+
+
+        `
+        {
+          'carrier': 'MEGB'
+          'endpoint': 'location'
+        }
+        `
+
+        match results on queries:
+
+
+        `?carrier=MEGB&endpoint=locations` - OK
+
+
+        `?carrier=MEGB` - No match
+
+
+        `?carrier=MEGB&endpoint=locations&sender=retailer-api` - OK
+
+
+        `?carrier=MEGB&sender=retailer-api` - No match
+
+
+        `?sender=retailer-api` - No match
+
+      required: true
+      in: query
+      schema:
+        $ref: '#/components/schemas/MatchRule'
+  schemas:
+    MatchRule:
+      type: object
+      title: MatchRule
+      additionalProperties:
+        type: string
+      example:
+        agency: testagency
+        carrier: TEST
+        endpoint: someendpoint
+    MatchRules:
+      type: array
+      title: MatchRules
+      description: |
+        Collection of predicates to test agains incomming queries
+        If at least one predicate is matching the incomming query, the rate limit is applied to the request
+        Multiple rate limits can be applied to incomming request at once
+      items:
+        $ref: '#/components/schemas/MatchRule'
+    Quota:
+      type: object
+      title: Quota
+      description: Quota specification
+      required:
+        - replanish_interval
+        - burst_capacity
+      properties:
+        replanish_interval:
+          title: Replanish Interval
+          type: number
+          description: |
+            The 'weight' of a single cell in milliseconds or emission interval.
+            Maximum allowed requests per minute can be calculated as: 60 * 1000 / replanish_interval
+            Controls sustainable Cell Rate
+          example: 1000.0
+        burst_capacity:
+          title: Burst Capacity
+          type: integer
+          description: |
+            Number of sequential cells allowed in a single burst
+            A burst or clump of packets can arrive at a higher rate than determined by the emission interval
+            In case there is unused burst capacity, quota can also exceed RPM in certain time frames.
+            Burst capacity of 0 ensure that RPM is never exceeded but introduces a lot of delay.
+            Burst capacity does not affect Sustainable Cell Rate
+          example: 5
+    QuotaDetails:
+      type: object
+      title: QuotaDetails
+      description: Full information about quota
+      required:
+        - quota
+        - match
+        - state
+        - stats
+      properties:
+        quota:
+          $ref: '#/components/schemas/Quota'
+        match:
+          $ref: '#/components/schemas/MatchRules'
+        state:
+          $ref: '#/components/schemas/QuotaState'
+        stats:
+          $ref: '#/components/schemas/QuotaStats'
+    QuotaState:
+      type: object
+      title: QuotaState
+      description: State information of the quota
+      required:
+        - earliest_next_available
+        - remaining_burst_capacity
+      properties:
+        earliest_next_available:
+          title: Earliest Next Available
+          type: number
+          description: Earliest delay in ms from now when next cell is available
+          example: 566.66
+        remaining_burst_capacity:
+          title: remaining Burst Capacity
+          type: integer
+          description: Current remaining burst capacity
+          example: 3
+    QuotaStats:
+      type: object
+      title: QuotaStats
+      description: Quota statistics, purely descriptive. Not used in Rate limiting decisions.
+      required:
+        - rpm
+      properties:
+        rpm:
+          title: Rpm
+          type: integer
+          description: Number of requests in last 60 seconds
+          example: 36
+    QuotaUpdate:
+      type: object
+      title: QuotaUpdate
+      description: Quota update schema
+      required:
+        - quota
+        - match
+      properties:
+        quota:
+          $ref: '#/components/schemas/Quota'
+        match:
+          $ref: '#/components/schemas/MatchRules'
+    CellDetails:
+      type: object
+      title: CellDetails
+      description: |
+        Information about current cell state and matched quotas.
+        Matched quotas are computed based on query.
+        Info and state are computed dynamically based on matched quotas.
+      required:
+        - quotas
+        - info
+        - state
+      properties:
+        quotas:
+          type: array
+          title: Quotas
+          description: Matched quotas
+          items:
+            type: string
+            description: Quota label
+        info:
+          $ref: '#/components/schemas/Quota'
+        state:
+          $ref: '#/components/schemas/QuotaState'
+    CellInfo:
+      type: object
+      title: CellInfo
+      description: |
+        Information about current cell state.
+        Info and state are computed dynamically based on matched quotas.
+      required:
+        - info
+        - state
+      properties:
+        info:
+          $ref: '#/components/schemas/Quota'
+        state:
+          $ref: '#/components/schemas/QuotaState'
+    UpdateResult:
+      type: object
+      title: UpdateResult
+      description: |
+        Result of the cell update. Allowed/Denied flag + cell info
+      required:
+        - allowed
+        - details
+      properties:
+        allowed:
+          type: boolean
+          title: "Allowed"
+          description: |
+            Indicates if request was allowed
+            If request was allowed, rate limit state was already updated to accomodate
+            this request.
+            If request was rejected, rate limit was not updated
+        details:
+          $ref: '#/components/schemas/CellInfo'

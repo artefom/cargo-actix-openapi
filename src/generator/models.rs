@@ -110,7 +110,7 @@ fn to_rust_operation(
         .or(operation.description.as_ref())
         .cloned();
 
-    let params_spliited = ctx.split_parameters(global_params, &operation.parameters);
+    let params_spliited = ctx.split_parameters(global_params, &operation.parameters)?;
 
     let path_params_inline = params_spliited
         .path_parameters
@@ -160,7 +160,7 @@ pub fn to_rust_module(spec: &OpenAPI) -> Result<RustModule> {
     let mut defmaker = DefinitionMaker::new(&ctx);
 
     for (path, path_item) in spec.paths.iter() {
-        let path_item = ctx.deref(path_item);
+        let path_item = ctx.deref(path_item)?;
         let global_params: &Vec<ReferenceOr<Parameter>> = &path_item.parameters;
         for (method, operation) in to_operation_map(path_item) {
             operations.push(

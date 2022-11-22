@@ -1,0 +1,15 @@
+api:
+  definitions:
+  - name: GreetUserPath
+    data: !Struct
+      properties:
+        user: String
+  operations:
+  - name: greet_user
+    path: /hello/{user}
+    method: Get
+    doc: Returns a greeting to the user!
+    param_path: web::Path<GreetUserPath>
+    param_query: null
+    param_body: null
+    response: web::Json<String>

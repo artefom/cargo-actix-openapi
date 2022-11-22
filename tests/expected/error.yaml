@@ -7,8 +7,15 @@ api:
   - name: GreetUserResponseError
     data: !ApiErr
       variants:
-      - detail: Not found
+      - name: NotFound
+        detail: Not found
         code: NOT_FOUND
+      - name: InvalidCharacterInName
+        detail: Invalid character in name
+        code: BAD_REQUEST
+      - name: NameContainsSpace
+        detail: Name contains space
+        code: BAD_REQUEST
   operations:
   - name: greet_user
     path: /hello/{user}

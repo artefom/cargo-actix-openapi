@@ -29,3 +29,10 @@ paths:
               schema:
                 type: string
                 enum: ['Not found']
+        400:
+          description: Input data error
+          content:
+            application/json:
+              schema:
+                type: string
+                enum: ['Invalid character in name', 'Name contains space']
