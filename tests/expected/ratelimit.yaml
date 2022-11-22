@@ -1,0 +1,145 @@
+api:
+  definitions:
+  - name: QuotaDetailsPath
+    data: !Struct
+      properties:
+        quota: String
+  - name: Quota
+    data: !Struct
+      properties:
+        replanish_interval: f64
+        burst_capacity: i64
+  - name: MatchRule
+    data: !Struct
+      properties: {}
+  - name: QuotaState
+    data: !Struct
+      properties:
+        earliest_next_available: f64
+        remaining_burst_capacity: i64
+  - name: QuotaStats
+    data: !Struct
+      properties:
+        rpm: i64
+  - name: QuotaDetails
+    data: !Struct
+      properties:
+        quota: Quota
+        match: Vec<MatchRule>
+        state: QuotaState
+        stats: QuotaStats
+  - name: QuotaDetailsResponseError
+    data: !ApiErr
+      variants:
+      - name: QuotaNotFound
+        detail: Quota not found
+        code: NOT_FOUND
+  - name: MatchRule
+    data: !Struct
+      properties: {}
+  - name: CellTestQuery
+    data: !Struct
+      properties:
+        query: MatchRule
+  - name: Quota
+    data: !Struct
+      properties:
+        replanish_interval: f64
+        burst_capacity: i64
+  - name: QuotaState
+    data: !Struct
+      properties:
+        earliest_next_available: f64
+        remaining_burst_capacity: i64
+  - name: CellDetails
+    data: !Struct
+      properties:
+        quotas: Vec<String>
+        info: Quota
+        state: QuotaState
+  - name: CellTestResponseError
+    data: !ApiErr
+      variants:
+      - name: DuplicateQueryKey
+        detail: Duplicate query key
+        code: BAD_REQUEST
+      - name: NoQuotasMatchingQueryFound
+        detail: No quotas matching query found
+        code: NOT_FOUND
+  - name: MatchRule
+    data: !Struct
+      properties: {}
+  - name: CellUpdateQuery
+    data: !Struct
+      properties:
+        query: MatchRule
+  - name: Quota
+    data: !Struct
+      properties:
+        replanish_interval: f64
+        burst_capacity: i64
+  - name: QuotaState
+    data: !Struct
+      properties:
+        earliest_next_available: f64
+        remaining_burst_capacity: i64
+  - name: CellInfo
+    data: !Struct
+      properties:
+        info: Quota
+        state: QuotaState
+  - name: UpdateResult
+    data: !Struct
+      properties:
+        allowed: bool
+        details: CellInfo
+  - name: CellUpdateResponseError
+    data: !ApiErr
+      variants:
+      - name: DuplicateQueryKey
+        detail: Duplicate query key
+        code: BAD_REQUEST
+      - name: NoQuotasMatchingQueryFound
+        detail: No quotas matching query found
+        code: NOT_FOUND
+  operations:
+  - name: health
+    path: /health
+    method: Get
+    doc: Check service health
+    param_path: null
+    param_query: null
+    param_body: null
+    response: web::Json<String>
+  - name: quota_list
+    path: /quota
+    method: Get
+    doc: List quotas
+    param_path: null
+    param_query: null
+    param_body: null
+    response: web::Json<Vec<String>>
+  - name: quota_details
+    path: /quota/{quota}
+    method: Get
+    doc: Get quota details
+    param_path: web::Path<QuotaDetailsPath>
+    param_query: null
+    param_body: null
+    response: Result<web::Json<QuotaDetails>,QuotaDetailsResponseError>
+  - name: cell_test
+    path: /cell/test
+    method: Get
+    doc: Get current rate limitation state for given query
+    param_path: null
+    param_query: web::Query<CellTestQuery>
+    param_body: null
+    response: Result<web::Json<CellDetails>,CellTestResponseError>
+  - name: cell_update
+    path: /cell/update
+    method: Post
+    doc: Try to accomodate for one request
+    param_path: null
+    param_query: web::Query<CellUpdateQuery>
+    param_body: null
+    response: Result<web::Json<UpdateResult>,CellUpdateResponseError>
