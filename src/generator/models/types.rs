@@ -391,7 +391,13 @@ mod tests {
     }
 }
 
-const RUST_KEYWORDS: &[&str] = &["match"];
+const RUST_KEYWORDS: &[&str] = &[
+    "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn", "for",
+    "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref", "return",
+    "self", "Self", "static", "struct", "super", "trait", "true", "type", "unsafe", "use", "where",
+    "while", "async", "await", "dyn", "abstract", "become", "box", "do", "final", "macro",
+    "override", "priv", "typeof", "unsized", "virtual", "yield", "try",
+];
 
 pub fn to_rust_identifier(val: &str, case: Case) -> String {
     let val = slug::slugify(val.to_case(Case::Title));
