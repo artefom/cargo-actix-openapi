@@ -27,39 +27,39 @@ api:
       - name: user
         rename: user
         default: default_str_world
-        ptype: String
+        type_: String
       - name: v_1_float
         rename: v1_float
         default: default_float_1
-        ptype: f64
+        type_: f64
       - name: v_1_int
         rename: v1_int
         default: default_int_1
-        ptype: i64
+        type_: i64
       - name: v_1_opt_float
         rename: v1_opt_float
         default: opt_default_float_1
-        ptype: Option<f64>
+        type_: Option<f64>
       - name: v_1_opt_int
         rename: v1_opt_int
         default: opt_default_int_1
-        ptype: Option<i64>
+        type_: Option<i64>
       - name: n_1
         rename: n1
         default: opt_default_int_1
-        ptype: Option<i64>
+        type_: Option<i64>
       - name: n_2
         rename: n2
         default: null
-        ptype: i64
+        type_: i64
       - name: n_3
         rename: n3
         default: null
-        ptype: Option<i64>
+        type_: Option<i64>
       - name: n_4
         rename: n4
         default: default_int_1
-        ptype: i64
+        type_: i64
   operations:
   - name: greet_user
     path: /hello/{user}

@@ -7,7 +7,7 @@ api:
       - name: user
         rename: user
         default: null
-        ptype: String
+        type_: String
   - name: GreetUserResponseStrEnum
     data: !Enum
       doc: String enum example
@@ -29,11 +29,11 @@ api:
       - name: str_enum
         rename: strEnum
         default: null
-        ptype: GreetUserResponseStrEnum
+        type_: GreetUserResponseStrEnum
       - name: int_enum
         rename: intEnum
         default: null
-        ptype: i64
+        type_: i64
   operations:
   - name: greet_user
     path: /hello/{user}

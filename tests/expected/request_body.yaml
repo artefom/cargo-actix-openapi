@@ -7,7 +7,7 @@ api:
       - name: user
         rename: user
         default: null
-        ptype: String
+        type_: String
   operations:
   - name: greet_user
     path: /hello/{user}

@@ -7,7 +7,7 @@ api:
       - name: user
         rename: user
         default: null
-        ptype: String
+        type_: String
   - name: default_int_1
     data: !DefaultProvider
       vtype: i64
@@ -23,11 +23,11 @@ api:
       - name: foo
         rename: foo
         default: default_int_1
-        ptype: i64
+        type_: i64
       - name: bar
         rename: bar
         default: default_float_0_1
-        ptype: f64
+        type_: f64
   - name: GreetUserBody
     data: !Struct
       doc: null
@@ -35,11 +35,11 @@ api:
       - name: str
         rename: str
         default: null
-        ptype: String
+        type_: String
       - name: obj
         rename: obj
         default: null
-        ptype: GreetUserBodyObj
+        type_: GreetUserBodyObj
   operations:
   - name: greet_user
     path: /hello/{user}

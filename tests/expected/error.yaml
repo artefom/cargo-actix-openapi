@@ -7,7 +7,7 @@ api:
       - name: user
         rename: user
         default: null
-        ptype: String
+        type_: String
   - name: GreetUserResponseError
     data: !ApiErr
       variants:

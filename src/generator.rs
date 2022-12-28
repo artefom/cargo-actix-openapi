@@ -89,7 +89,7 @@ fn convert_structs(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::
             props.push(templates::RustProp {
                 title: prop.name.clone(),
                 annotation: render_annotation(annotation),
-                type_: prop.ptype.to_string(),
+                type_: prop.type_.to_string(),
             })
         }
 

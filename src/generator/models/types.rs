@@ -328,7 +328,7 @@ where
         name: to_rust_identifier(&param.data().name, Case::Snake),
         rename: param.data().name.clone(),
         default,
-        ptype: inline,
+        type_: inline,
     })
 }
 
@@ -455,7 +455,7 @@ impl Inlining for Schema {
     fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
         let SchemaKind::Type(schema_type) = &self.schema_kind else {panic!("Only type schemas are implemented")};
 
-        let mut itype = match schema_type {
+        let mut type_ = match schema_type {
             Type::String(value) => {
                 if value.enumeration.is_empty() {
                     InlineType::String
@@ -486,10 +486,10 @@ impl Inlining for Schema {
         };
 
         if self.schema_data.nullable {
-            itype = InlineType::Option(Box::new(itype))
+            type_ = InlineType::Option(Box::new(type_))
         };
 
-        Ok(itype)
+        Ok(type_)
     }
 }
 
@@ -602,7 +602,7 @@ fn make_default_provider(
 /// Some of the combinations of them are not possible/hard to implement
 /// For example - what should happen if value is not required does not have default and is not nullable?
 /// Or how value can be required and have default or nullable at the same time - that does not make much sense
-/// 
+///
 /// required - when ture, value is physically required to be specified in json (even with null)
 /// has_default - when true, the value has default value
 /// is_nullable - when true - the value can be nullable
@@ -641,11 +641,11 @@ fn inline_obj(
 
         let prop_name_camel = to_rust_identifier(prop_name, Case::UpperCamel);
 
-        let itype = prop_schema
+        let type_ = prop_schema
             .inline(format!("{name}{prop_name_camel}"), defmaker)
             .with_context(|| format!("Could not make inline type for {prop_name}"))?;
 
-        let default = make_default_provider(&prop_schema.schema_data.default, &itype, defmaker)
+        let default = make_default_provider(&prop_schema.schema_data.default, &type_, defmaker)
             .with_context(|| format!("Could not make default value for {prop_name}"))?;
 
         let prop_required = required.contains(prop_name);
@@ -661,7 +661,7 @@ fn inline_obj(
             name: to_rust_identifier(prop_name, Case::Snake),
             rename: prop_name.clone(),
             default,
-            ptype: itype,
+            type_: type_,
         })
     }
 
@@ -763,7 +763,7 @@ pub struct RStructProp {
     pub name: String,
     pub rename: String,
     pub default: Option<InlineType>,
-    pub ptype: InlineType,
+    pub type_: InlineType,
 }
 
 /// Something that can serialize into rust struct
