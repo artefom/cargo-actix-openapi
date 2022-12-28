@@ -1,7 +1,7 @@
 //! Type system that roughly maps to openapi type system
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fmt::{Debug, Display},
     ops::Deref,
     rc::Rc,
@@ -17,9 +17,12 @@ use serde::{Serialize, Serializer};
 
 use anyhow::{anyhow, bail, Context, Result};
 
-use crate::openapictx::{
-    CookieParameter, Dereferencing, HeaderParaemter, OpenApiCtx, ParameterStore, ParametersType,
-    PathParameter, QueryParameter, ToSchema,
+use crate::{
+    generator::templates::quote_str,
+    openapictx::{
+        CookieParameter, Dereferencing, HeaderParaemter, OpenApiCtx, ParameterStore,
+        ParametersType, PathParameter, QueryParameter, ToSchema,
+    },
 };
 
 pub trait GenericParameter {
@@ -200,7 +203,7 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
                 };
 
                 api_err_variants.push(ApiErrVariant {
-                    name: variant.to_case(Case::UpperCamel),
+                    name: to_rust_identifier(variant, Case::UpperCamel),
                     detail: variant.clone(),
                     code: status.clone(),
                 });
@@ -288,13 +291,45 @@ impl Inlining for Responses {
 impl Inlining for ParameterData {
     fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
         let schema = self.format.to_schema(defmaker.ctx)?;
-        let inner = schema.inline(name, defmaker)?;
-        if self.required {
-            Ok(inner)
-        } else {
-            Ok(InlineType::Option(Box::new(inner)))
-        }
+        schema.inline(name, defmaker)
     }
+}
+
+fn render_parameter<T>(
+    name: &String,
+    param: &T,
+    defmaker: &mut DefinitionMaker,
+) -> Result<RStructProp>
+where
+    T: GenericParameter,
+{
+    let param_data = param.data();
+    let inline_name = format!(
+        "{}{}",
+        name,
+        to_rust_identifier(&param_data.name, Case::UpperCamel)
+    );
+    let inline = param.data().inline(inline_name, defmaker)?;
+
+    let parameter_schema = param_data
+        .format
+        .to_schema(defmaker.ctx)
+        .with_context(|| format!("Could not get parameter schema for {}", &param_data.name))?;
+
+    let default = make_default_provider(&parameter_schema.schema_data.default, &inline, defmaker)?;
+
+    validate_required_default_and_nullable(
+        param_data.required,
+        default.is_some(),
+        parameter_schema.schema_data.nullable,
+    )?;
+
+    Ok(RStructProp {
+        name: to_rust_identifier(&param.data().name, Case::Snake),
+        rename: param.data().name.clone(),
+        default,
+        ptype: inline,
+    })
 }
 
 impl<T> MaybeInlining for Vec<T>
@@ -306,17 +341,13 @@ where
         if self.is_empty() {
             return Ok(None);
         }
-        let mut properties = IndexMap::new();
+        let mut properties = Vec::new();
+
         for param in self {
-            let param_data = param.data();
-            let inline_name = format!("{}{}", &name, param_data.name.to_case(Case::UpperCamel));
-            let inline = param.data().inline(inline_name, defmaker)?;
-            if properties
-                .insert(param.data().name.clone(), inline)
-                .is_some()
-            {
-                bail!("Duplicate parameter name")
-            }
+            properties
+                .push(render_parameter(&name, param, defmaker).with_context(|| {
+                    format!("Could not render parameter {}", param.data().name)
+                })?);
         }
 
         let def = Rc::new(Definition {
@@ -340,22 +371,51 @@ where
     }
 }
 
-pub fn sanitize_rust_identifier(val: &String) -> Result<String> {
-    let mut val = slug::slugify(val).to_case(Case::UpperCamel);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    if val
-        .chars()
-        .next()
-        .ok_or_else(|| anyhow!("Identifier does not contain latin characters"))?
-        .is_numeric()
-    {
-        val = format!("V{}", val);
-    };
-
-    Ok(val)
+    #[test]
+    fn it_works() {
+        println!("{}", to_rust_identifier("12HelloWorld5", Case::Snake));
+        println!("{}", to_rust_identifier("RGBArray", Case::Snake));
+        println!("{}", to_rust_identifier("PostgreSQL 2341DB_", Case::Snake));
+        println!("{}", to_rust_identifier("ThisMadWorld", Case::Snake));
+        println!("{}", to_rust_identifier("helloMyDude", Case::Snake));
+        println!("{}", to_rust_identifier("HELLO_WORLD", Case::Snake));
+        println!("{}", to_rust_identifier("v1", Case::Snake));
+        println!(
+            "{}",
+            "HelloWorldV1V3_RGBArray !@$5 :ADA:".to_case(Case::Title)
+        );
+    }
 }
 
-fn make_inline(
+const RUST_KEYWORDS: &[&str] = &["match"];
+
+pub fn to_rust_identifier(val: &str, case: Case) -> String {
+    let val = slug::slugify(val.to_case(Case::Title));
+
+    let mut result = val.from_case(Case::Kebab).to_case(case);
+
+    if result.is_empty() {
+        result = "_".to_string()
+    }
+
+    if let Some(value) = result.chars().into_iter().next() {
+        if value.is_numeric() {
+            result = format!("_{result}")
+        }
+    };
+
+    if RUST_KEYWORDS.contains(&result.as_str()) {
+        result = format!("{result}_");
+    }
+
+    result
+}
+
+fn enum_inline(
     name: String,
     defmaker: &mut DefinitionMaker,
     data: Vec<&String>,
@@ -365,8 +425,7 @@ fn make_inline(
     for variant in data {
         let variant_value = (*variant).clone();
         variants.push(REnumVariant {
-            name: sanitize_rust_identifier(&variant_value)
-                .context("Could not get name for enum value")?,
+            name: to_rust_identifier(&variant_value, Case::UpperCamel),
             value: variant_value,
         })
     }
@@ -396,7 +455,7 @@ impl Inlining for Schema {
     fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
         let SchemaKind::Type(schema_type) = &self.schema_kind else {panic!("Only type schemas are implemented")};
 
-        let itype = match schema_type {
+        let mut itype = match schema_type {
             Type::String(value) => {
                 if value.enumeration.is_empty() {
                     InlineType::String
@@ -404,7 +463,7 @@ impl Inlining for Schema {
                     let name = get_schema_name(name, &self.schema_data.title);
                     let variants = remove_options(&value.enumeration)
                         .context("Could not serialize enum variants")?;
-                    make_inline(name, defmaker, variants, &self.schema_data.description)?
+                    enum_inline(name, defmaker, variants, &self.schema_data.description)?
                 }
             }
             Type::Number(_) => InlineType::Float,
@@ -425,7 +484,142 @@ impl Inlining for Schema {
                 InlineType::Array(Box::new(new_inline))
             }
         };
+
+        if self.schema_data.nullable {
+            itype = InlineType::Option(Box::new(itype))
+        };
+
         Ok(itype)
+    }
+}
+
+fn make_default_bool(val: &bool) -> (String, String) {
+    let value = match val {
+        true => "true",
+        false => "false",
+    }
+    .to_string();
+    let name = match val {
+        true => "defaut_true",
+        false => "default_false",
+    }
+    .to_string();
+    (name, value)
+}
+
+fn make_default_int(val: &i64) -> (String, String) {
+    (format!("default_int_{val}"), val.to_string())
+}
+
+fn make_default_float(val: &f64) -> (String, String) {
+    (
+        format!("default_float_{val}").replace('.', "_"),
+        val.to_string(),
+    )
+}
+
+fn make_default_str(val: &str) -> (String, String) {
+    let name = format!("default_str_{}", to_rust_identifier(val, Case::Snake));
+    (
+        format!("default_str_{}", to_rust_identifier(val, Case::Snake)),
+        format!("{}.to_string()", quote_str(val)),
+    )
+}
+
+fn make_default_provider(
+    val: &Option<serde_json::Value>,
+    type_: &InlineType,
+    defmaker: &mut DefinitionMaker,
+) -> Result<Option<InlineType>> {
+    let Some(val) = val else {
+        return Ok(None)
+    };
+
+    let (inner_type, optional) = match type_ {
+        InlineType::Option(inner) => (inner.as_ref(), true),
+        _ => (type_, false),
+    };
+
+    let (mut name, mut value) = match val {
+        serde_json::Value::Null => return Ok(None),
+        serde_json::Value::Bool(value) => make_default_bool(value),
+        serde_json::Value::Number(num) => match inner_type {
+            InlineType::Integer => {
+                if let Some(val) = num.as_i64() {
+                    make_default_int(&val)
+                } else {
+                    bail!("Could not get default as i64")
+                }
+            }
+            InlineType::Float => {
+                if let Some(val) = num.as_f64() {
+                    make_default_float(&val)
+                } else {
+                    bail!("Could not get default as f64")
+                }
+            }
+            _ => bail!("Default is incompatible with the type: {:?}", inner_type),
+        },
+        serde_json::Value::String(value) => make_default_str(value),
+        serde_json::Value::Array(_) => todo!(),
+        serde_json::Value::Object(_) => todo!(),
+    };
+
+    if optional {
+        value = format!("Some({value})");
+        name = format!("opt_{name}")
+    }
+
+    // Look for duplicate providers and return them
+    for def in &defmaker.store {
+        let def_provider = match &def.data {
+            DefinitionData::DefaultProvider(value) => value,
+            _ => continue,
+        };
+        if def_provider.value == value && &def_provider.vtype == type_ {
+            return Ok(Some(InlineType::Reference(def.clone())));
+        }
+    }
+
+    let provider = DefaultProvider {
+        vtype: type_.clone(),
+        value,
+    };
+
+    // Or create new definition and return it
+    let definition = Rc::new(Definition {
+        name,
+        data: DefinitionData::DefaultProvider(provider),
+    });
+
+    defmaker.store.push(definition.clone());
+
+    Ok(Some(InlineType::Reference(definition)))
+}
+
+/// Openapi has 'required' 'default' and 'nullable' properties
+/// Not all of them strictly map to rust serde
+/// Some of the combinations of them are not possible/hard to implement
+/// For example - what should happen if value is not required does not have default and is not nullable?
+/// Or how value can be required and have default or nullable at the same time - that does not make much sense
+/// 
+/// required - when ture, value is physically required to be specified in json (even with null)
+/// has_default - when true, the value has default value
+/// is_nullable - when true - the value can be nullable
+fn validate_required_default_and_nullable(
+    required: bool,
+    has_default: bool,
+    is_nullable: bool,
+) -> Result<()> {
+    match (required, has_default, is_nullable) {
+        (true, true, _) => bail!("Value cannot be required and have default at the same time"),
+        (true, false, false) => Ok(()), // Value is required and does not have default
+        (true, false, true) => bail!("Value cannot be required and be nullable at the same time"),
+        (false, true, _) => Ok(()), // Values are not required and have default
+        (false, false, true) => Ok(()), // Value is not required, does not have default but is nullable
+        (false, false, false) => {
+            bail!("Value is not required, does not have default and is nullable at the same time")
+        }
     }
 }
 
@@ -435,13 +629,40 @@ fn inline_obj(
     defmaker: &mut DefinitionMaker,
     doc: &Option<String>,
 ) -> Result<InlineType> {
-    let mut properties = IndexMap::new();
+    let mut properties = Vec::new();
+
+    let required: HashSet<&String> = obj.required.iter().collect();
 
     for (prop_name, prop_schema) in obj.properties.iter() {
-        let prop_schema = defmaker.ctx.deref_boxed(prop_schema)?;
-        let prop_name_camel = prop_name.to_case(Case::UpperCamel);
-        let itype = prop_schema.inline(format!("{name}{prop_name_camel}"), defmaker)?;
-        properties.insert(prop_name.clone(), itype);
+        let prop_schema = defmaker
+            .ctx
+            .deref_boxed(prop_schema)
+            .with_context(|| format!("Could not dereference {prop_name}"))?;
+
+        let prop_name_camel = to_rust_identifier(prop_name, Case::UpperCamel);
+
+        let itype = prop_schema
+            .inline(format!("{name}{prop_name_camel}"), defmaker)
+            .with_context(|| format!("Could not make inline type for {prop_name}"))?;
+
+        let default = make_default_provider(&prop_schema.schema_data.default, &itype, defmaker)
+            .with_context(|| format!("Could not make default value for {prop_name}"))?;
+
+        let prop_required = required.contains(prop_name);
+
+        validate_required_default_and_nullable(
+            prop_required,
+            default.is_some(),
+            prop_schema.schema_data.nullable,
+        )
+        .with_context(|| format!("Could not validate required and nullable for {prop_name}"))?;
+
+        properties.push(RStructProp {
+            name: to_rust_identifier(prop_name, Case::Snake),
+            rename: prop_name.clone(),
+            default,
+            ptype: itype,
+        })
     }
 
     let definition = Rc::new(Definition {
@@ -472,7 +693,7 @@ impl<'a> DefinitionMaker<'a> {
 }
 
 /// Arbitrary inline type
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InlineType {
     String,
     Integer,
@@ -488,6 +709,24 @@ pub enum InlineType {
     Reference(Rc<Definition>),
     Result(Rc<InlineType>, Rc<InlineType>),
 }
+
+impl PartialEq for InlineType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Array(l0), Self::Array(r0)) => l0 == r0,
+            (Self::Map(l0), Self::Map(r0)) => l0 == r0,
+            (Self::Json(l0), Self::Json(r0)) => l0 == r0,
+            (Self::Path(l0), Self::Path(r0)) => l0 == r0,
+            (Self::Query(l0), Self::Query(r0)) => l0 == r0,
+            (Self::Option(l0), Self::Option(r0)) => l0 == r0,
+            (Self::Reference(l0), Self::Reference(r0)) => l0.name == r0.name,
+            (Self::Result(l0, l1), Self::Result(r0, r1)) => l0 == r0 && l1 == r1,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+
+impl Eq for InlineType {}
 
 impl Display for InlineType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -519,13 +758,19 @@ impl Serialize for InlineType {
 }
 
 /// Something that can serialize into rust struct property
-struct RProp {}
+#[derive(Debug, Serialize)]
+pub struct RStructProp {
+    pub name: String,
+    pub rename: String,
+    pub default: Option<InlineType>,
+    pub ptype: InlineType,
+}
 
 /// Something that can serialize into rust struct
 #[derive(Debug, Serialize)]
 pub struct RStruct {
     pub doc: Option<String>,
-    pub properties: IndexMap<String, InlineType>,
+    pub properties: Vec<RStructProp>,
 }
 
 #[derive(Debug, Serialize)]
@@ -554,10 +799,17 @@ pub struct REnum {
 }
 
 #[derive(Debug, Serialize)]
+pub struct DefaultProvider {
+    pub vtype: InlineType,
+    pub value: String,
+}
+
+#[derive(Debug, Serialize)]
 pub enum DefinitionData {
     Struct(RStruct),
     Enum(REnum),
     ApiErr(RApiErr),
+    DefaultProvider(DefaultProvider),
 }
 
 #[derive(Debug, Serialize)]

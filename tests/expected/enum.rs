@@ -13,21 +13,25 @@ use actix_web::{
 
 use async_trait::async_trait;
 
+// Defaults
+// -------------------------------
+
+
 // Enums
 // -------------------------------
 
 /// String enum example
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum GreetUserResponseStrEnum {
-    #[serde(rename = "First Variant")]
+    #[serde(rename="First Variant")]
     FirstVariant,
-    #[serde(rename = "Second variant $")]
+    #[serde(rename="Second variant $")]
     SecondVariant,
-    #[serde(rename = "!123")]
-    V123,
-    #[serde(rename = "Hello, \"World\"")]
+    #[serde(rename="!123")]
+    _123,
+    #[serde(rename="Hello, \"World\"")]
     HelloWorld,
-    #[serde(rename = "Hello, \\\"World2\\\"!")]
+    #[serde(rename="Hello, \\\"World2\\\"!")]
     HelloWorld2,
 }
 
@@ -44,7 +48,7 @@ pub struct GreetUserPath {
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct GreetUserResponse {
     #[serde(rename="strEnum")]
-    pub strenum: GreetUserResponseStrEnum,
+    pub str_enum: GreetUserResponseStrEnum,
     #[serde(rename="intEnum")]
-    pub intenum: i64,
+    pub int_enum: i64,
 }

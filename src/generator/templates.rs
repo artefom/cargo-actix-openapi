@@ -7,11 +7,12 @@ use tera::{Tera, Value};
 static T_API: &str = include_str!("static/api.tera");
 static T_ENUM: &str = include_str!("static/enum.tera");
 static T_STRUCT: &str = include_str!("static/struct.tera");
+static T_DEFAULT: &str = include_str!("static/default.tera");
 
 #[derive(Debug, Serialize)]
 pub struct RustEnumVariant {
     pub title: String,
-    pub value: String,
+    pub annotation: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -25,7 +26,7 @@ pub struct RustEnum {
 pub struct RustProp {
     pub title: String,
     pub annotation: Option<String>,
-    pub ptype: String,
+    pub type_: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -36,9 +37,17 @@ pub struct RustStruct {
 }
 
 #[derive(Debug, Serialize)]
+pub struct RustDefault {
+    pub title: String,
+    pub type_: String,
+    pub value: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct RustModule {
     pub enums: Vec<RustEnum>,
     pub structs: Vec<RustStruct>,
+    pub defaults: Vec<RustDefault>,
 }
 
 pub fn quote_str(value: &str) -> String {
@@ -107,6 +116,7 @@ pub fn render_rust_module(module: RustModule) -> Result<String> {
 
     tera.add_raw_template("enum.tera", T_ENUM)?;
     tera.add_raw_template("struct.tera", T_STRUCT)?;
+    tera.add_raw_template("default.tera", T_DEFAULT)?;
     tera.add_raw_template("api.tera", T_API)?;
 
     let ctx = tera::Context::from_serialize(module)?;

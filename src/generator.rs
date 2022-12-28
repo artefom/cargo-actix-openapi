@@ -1,5 +1,6 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, hash::Hash, rc::Rc};
 
+use indexmap::IndexMap;
 use openapiv3::OpenAPI;
 use serde::ser;
 
@@ -9,6 +10,8 @@ mod models;
 mod templates;
 
 use models::to_rust_module;
+
+use self::models::types::to_rust_identifier;
 
 fn convert_enums(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::RustEnum> {
     let mut enums = Vec::new();
@@ -22,9 +25,15 @@ fn convert_enums(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::Ru
         let mut variants = Vec::new();
 
         for variant in &enum_def.variants {
+            let mut annotation = IndexMap::new();
+
+            if variant.value != variant.name {
+                annotation.insert("rename", variant.value.clone());
+            }
+
             variants.push(templates::RustEnumVariant {
                 title: variant.name.clone(),
-                value: variant.value.to_string(),
+                annotation: render_annotation(annotation),
             })
         }
 
@@ -38,19 +47,7 @@ fn convert_enums(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::Ru
     enums
 }
 
-const RUST_KEYWORDS: &[&str] = &["match"];
-
-fn to_rust_identifier(val: &str) -> String {
-    let mut val = slug::slugify(val).replace('-', "_");
-
-    if RUST_KEYWORDS.contains(&val.as_str()) {
-        val = format!("{val}_");
-    }
-
-    val
-}
-
-fn render_annotation(vals: HashMap<String, String>) -> Option<String> {
+fn render_annotation(vals: IndexMap<&str, String>) -> Option<String> {
     let mut keyvals: Vec<String> = Vec::new();
 
     for (key, value) in vals {
@@ -78,19 +75,21 @@ fn convert_structs(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::
 
         let mut props = Vec::new();
 
-        for (prop_name, prop_type) in &struct_def.properties {
-            let title = to_rust_identifier(prop_name);
+        for prop in &struct_def.properties {
+            let mut annotation = IndexMap::new();
 
-            let mut annotation = HashMap::new();
+            if prop.rename != prop.name {
+                annotation.insert("rename", prop.rename.clone());
+            };
 
-            if prop_name != &title {
-                annotation.insert("rename".to_string(), prop_name.clone());
+            if let Some(ref default) = prop.default {
+                annotation.insert("default", default.to_string());
             };
 
             props.push(templates::RustProp {
-                title,
+                title: prop.name.clone(),
                 annotation: render_annotation(annotation),
-                ptype: prop_type.to_string(),
+                type_: prop.ptype.to_string(),
             })
         }
 
@@ -104,6 +103,25 @@ fn convert_structs(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::
     enums
 }
 
+fn convert_defaults(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::RustDefault> {
+    let mut defaults = Vec::new();
+
+    for definition in defs {
+        let default = match &definition.data {
+            models::types::DefinitionData::DefaultProvider(value) => value,
+            _ => continue,
+        };
+
+        defaults.push(templates::RustDefault {
+            title: definition.name.clone(),
+            type_: default.vtype.to_string(),
+            value: default.value.to_string(),
+        })
+    }
+
+    defaults
+}
+
 pub fn generate_api(spec: &str) -> Result<(String, String)> {
     let openapi: OpenAPI = serde_yaml::from_str(spec).expect("Could not deserialize input");
 
@@ -114,6 +132,7 @@ pub fn generate_api(spec: &str) -> Result<(String, String)> {
     let rust_module = templates::RustModule {
         structs: convert_structs(&rust_module.api.definitions),
         enums: convert_enums(&rust_module.api.definitions),
+        defaults: convert_defaults(&rust_module.api.definitions),
     };
 
     let serialized = templates::render_rust_module(rust_module)?;

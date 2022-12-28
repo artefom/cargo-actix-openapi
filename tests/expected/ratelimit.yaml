@@ -4,36 +4,66 @@ api:
     data: !Struct
       doc: null
       properties:
-        quota: String
+      - name: quota
+        rename: quota
+        default: null
+        ptype: String
   - name: Quota
     data: !Struct
       doc: Quota specification
       properties:
-        replanish_interval: f64
-        burst_capacity: i64
+      - name: replanish_interval
+        rename: replanish_interval
+        default: null
+        ptype: f64
+      - name: burst_capacity
+        rename: burst_capacity
+        default: null
+        ptype: i64
   - name: MatchRule
     data: !Struct
       doc: null
-      properties: {}
+      properties: []
   - name: QuotaState
     data: !Struct
       doc: State information of the quota
       properties:
-        earliest_next_available: f64
-        remaining_burst_capacity: i64
+      - name: earliest_next_available
+        rename: earliest_next_available
+        default: null
+        ptype: f64
+      - name: remaining_burst_capacity
+        rename: remaining_burst_capacity
+        default: null
+        ptype: i64
   - name: QuotaStats
     data: !Struct
       doc: Quota statistics, purely descriptive. Not used in Rate limiting decisions.
       properties:
-        rpm: i64
+      - name: rpm
+        rename: rpm
+        default: null
+        ptype: i64
   - name: QuotaDetails
     data: !Struct
       doc: Full information about quota
       properties:
-        quota: Quota
-        match: Vec<MatchRule>
-        state: QuotaState
-        stats: QuotaStats
+      - name: quota
+        rename: quota
+        default: null
+        ptype: Quota
+      - name: match_
+        rename: match
+        default: null
+        ptype: Vec<MatchRule>
+      - name: state
+        rename: state
+        default: null
+        ptype: QuotaState
+      - name: stats
+        rename: stats
+        default: null
+        ptype: QuotaStats
   - name: QuotaDetailsResponseError
     data: !ApiErr
       variants:
@@ -43,24 +73,39 @@ api:
   - name: MatchRule
     data: !Struct
       doc: null
-      properties: {}
+      properties: []
   - name: CellTestQuery
     data: !Struct
       doc: null
       properties:
-        query: MatchRule
+      - name: query
+        rename: query
+        default: null
+        ptype: MatchRule
   - name: Quota
     data: !Struct
       doc: Quota specification
       properties:
-        replanish_interval: f64
-        burst_capacity: i64
+      - name: replanish_interval
+        rename: replanish_interval
+        default: null
+        ptype: f64
+      - name: burst_capacity
+        rename: burst_capacity
+        default: null
+        ptype: i64
   - name: QuotaState
     data: !Struct
       doc: State information of the quota
       properties:
-        earliest_next_available: f64
-        remaining_burst_capacity: i64
+      - name: earliest_next_available
+        rename: earliest_next_available
+        default: null
+        ptype: f64
+      - name: remaining_burst_capacity
+        rename: remaining_burst_capacity
+        default: null
+        ptype: i64
   - name: CellDetails
     data: !Struct
       doc: |
@@ -68,9 +113,18 @@ api:
         Matched quotas are computed based on query.
         Info and state are computed dynamically based on matched quotas.
       properties:
-        quotas: Vec<String>
-        info: Quota
-        state: QuotaState
+      - name: quotas
+        rename: quotas
+        default: null
+        ptype: Vec<String>
+      - name: info
+        rename: info
+        default: null
+        ptype: Quota
+      - name: state
+        rename: state
+        default: null
+        ptype: QuotaState
   - name: CellTestResponseError
     data: !ApiErr
       variants:
@@ -83,39 +137,66 @@ api:
   - name: MatchRule
     data: !Struct
       doc: null
-      properties: {}
+      properties: []
   - name: CellUpdateQuery
     data: !Struct
       doc: null
       properties:
-        query: MatchRule
+      - name: query
+        rename: query
+        default: null
+        ptype: MatchRule
   - name: Quota
     data: !Struct
       doc: Quota specification
       properties:
-        replanish_interval: f64
-        burst_capacity: i64
+      - name: replanish_interval
+        rename: replanish_interval
+        default: null
+        ptype: f64
+      - name: burst_capacity
+        rename: burst_capacity
+        default: null
+        ptype: i64
   - name: QuotaState
     data: !Struct
       doc: State information of the quota
       properties:
-        earliest_next_available: f64
-        remaining_burst_capacity: i64
+      - name: earliest_next_available
+        rename: earliest_next_available
+        default: null
+        ptype: f64
+      - name: remaining_burst_capacity
+        rename: remaining_burst_capacity
+        default: null
+        ptype: i64
   - name: CellInfo
     data: !Struct
       doc: |
         Information about current cell state.
         Info and state are computed dynamically based on matched quotas.
       properties:
-        info: Quota
-        state: QuotaState
+      - name: info
+        rename: info
+        default: null
+        ptype: Quota
+      - name: state
+        rename: state
+        default: null
+        ptype: QuotaState
   - name: UpdateResult
     data: !Struct
       doc: |
         Result of the cell update. Allowed/Denied flag + cell info
       properties:
-        allowed: bool
-        details: CellInfo
+      - name: allowed
+        rename: allowed
+        default: null
+        ptype: bool
+      - name: details
+        rename: details
+        default: null
+        ptype: CellInfo
   - name: CellUpdateResponseError
     data: !ApiErr
       variants:

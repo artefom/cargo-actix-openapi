@@ -1,10 +1,65 @@
 api:
   definitions:
+  - name: default_str_world
+    data: !DefaultProvider
+      vtype: String
+      value: '"World".to_string()'
+  - name: default_float_1
+    data: !DefaultProvider
+      vtype: f64
+      value: '1'
+  - name: default_int_1
+    data: !DefaultProvider
+      vtype: i64
+      value: '1'
+  - name: opt_default_float_1
+    data: !DefaultProvider
+      vtype: Option<f64>
+      value: Some(1)
+  - name: opt_default_int_1
+    data: !DefaultProvider
+      vtype: Option<i64>
+      value: Some(1)
   - name: GreetUserPath
     data: !Struct
       doc: null
       properties:
-        user: String
+      - name: user
+        rename: user
+        default: default_str_world
+        ptype: String
+      - name: v_1_float
+        rename: v1_float
+        default: default_float_1
+        ptype: f64
+      - name: v_1_int
+        rename: v1_int
+        default: default_int_1
+        ptype: i64
+      - name: v_1_opt_float
+        rename: v1_opt_float
+        default: opt_default_float_1
+        ptype: Option<f64>
+      - name: v_1_opt_int
+        rename: v1_opt_int
+        default: opt_default_int_1
+        ptype: Option<i64>
+      - name: n_1
+        rename: n1
+        default: opt_default_int_1
+        ptype: Option<i64>
+      - name: n_2
+        rename: n2
+        default: null
+        ptype: i64
+      - name: n_3
+        rename: n3
+        default: null
+        ptype: Option<i64>
+      - name: n_4
+        rename: n4
+        default: default_int_1
+        ptype: i64
   operations:
   - name: greet_user
     path: /hello/{user}

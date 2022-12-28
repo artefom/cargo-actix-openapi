@@ -21,11 +21,17 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - str
+                - obj
               properties:
                 str:
                   type: string
                 obj:
                   type: object
+                  required:
+                    - foo
+                    - bar
                   properties:
                     foo:
                       type: integer

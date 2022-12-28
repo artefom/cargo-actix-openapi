@@ -23,6 +23,9 @@ paths:
               schema:
                 type: object
                 description: "Enum container"
+                required:
+                  - strEnum
+                  - intEnum
                 properties:
                   strEnum:
                     type: string

@@ -73,6 +73,7 @@ dependencies = [
  "pretty_assertions",
  "rstest",
  "serde",
+ "serde_json",
  "serde_repr",
  "serde_yaml",
  "slug",

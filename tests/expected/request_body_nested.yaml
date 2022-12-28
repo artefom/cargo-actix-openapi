@@ -4,19 +4,34 @@ api:
     data: !Struct
       doc: null
       properties:
-        user: String
+      - name: user
+        rename: user
+        default: null
+        ptype: String
   - name: GreetUserBodyObj
     data: !Struct
       doc: null
       properties:
-        foo: i64
-        bar: f64
+      - name: foo
+        rename: foo
+        default: null
+        ptype: i64
+      - name: bar
+        rename: bar
+        default: null
+        ptype: f64
   - name: GreetUserBody
     data: !Struct
       doc: null
       properties:
-        str: String
-        obj: GreetUserBodyObj
+      - name: str
+        rename: str
+        default: null
+        ptype: String
+      - name: obj
+        rename: obj
+        default: null
+        ptype: GreetUserBodyObj
   operations:
   - name: greet_user
     path: /hello/{user}

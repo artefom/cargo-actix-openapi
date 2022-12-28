@@ -4,7 +4,10 @@ api:
     data: !Struct
       doc: null
       properties:
-        user: String
+      - name: user
+        rename: user
+        default: null
+        ptype: String
   - name: GreetUserResponseStrEnum
     data: !Enum
       doc: String enum example
@@ -13,7 +16,7 @@ api:
         value: First Variant
       - name: SecondVariant
         value: Second variant $
-      - name: V123
+      - name: _123
         value: '!123'
       - name: HelloWorld
         value: Hello, "World"
@@ -23,8 +26,14 @@ api:
     data: !Struct
       doc: Enum container
       properties:
-        strEnum: GreetUserResponseStrEnum
-        intEnum: i64
+      - name: str_enum
+        rename: strEnum
+        default: null
+        ptype: GreetUserResponseStrEnum
+      - name: int_enum
+        rename: intEnum
+        default: null
+        ptype: i64
   operations:
   - name: greet_user
     path: /hello/{user}

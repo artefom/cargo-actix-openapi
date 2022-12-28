@@ -1,0 +1,5 @@
+{%- macro render(model) -%}
+fn {{ model.title }}() -> {{ model.type_ }} {
+    {{ model.value }}
+}
+{%- endmacro render -%}

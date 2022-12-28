@@ -1,4 +1,5 @@
 use convert_case::{Case, Casing};
+use indexmap::IndexMap;
 use openapiv3::{OpenAPI, Parameter, ReferenceOr};
 use serde::{ser::SerializeTuple, Serialize, Serializer};
 use std::{collections::HashMap, fmt::Display, ops::Deref, rc::Rc};
@@ -7,7 +8,9 @@ use anyhow::{bail, Context, Result};
 
 use crate::openapictx::{OpenApiCtx, ToSchema};
 
-use self::types::{Definition, DefinitionMaker, InlineType, Inlining, MaybeInlining};
+use self::types::{
+    to_rust_identifier, Definition, DefinitionMaker, InlineType, Inlining, MaybeInlining,
+};
 
 /// Reference to ApiErr definition
 #[derive(Debug, Serialize)]
@@ -70,8 +73,10 @@ pub struct RustModule {
     pub api: ApiService,
 }
 
-fn to_operation_map(path_item: &openapiv3::PathItem) -> HashMap<HttpMethod, &openapiv3::Operation> {
-    let mut result = HashMap::new();
+fn to_operation_map(
+    path_item: &openapiv3::PathItem,
+) -> IndexMap<HttpMethod, &openapiv3::Operation> {
+    let mut result = IndexMap::new();
 
     if let Some(op) = &path_item.get {
         result.insert(HttpMethod::Get, op);
@@ -101,7 +106,7 @@ fn to_rust_operation(
         bail!("Operation must have operation_id")
     };
 
-    let name_upper = name.to_case(Case::UpperCamel);
+    let name_upper = to_rust_identifier(name, Case::UpperCamel);
 
     // Get operation docstring
     let doc = operation

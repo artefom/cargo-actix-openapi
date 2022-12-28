@@ -4,7 +4,10 @@ api:
     data: !Struct
       doc: null
       properties:
-        user: String
+      - name: user
+        rename: user
+        default: null
+        ptype: String
   operations:
   - name: greet_user
     path: /hello/{user}

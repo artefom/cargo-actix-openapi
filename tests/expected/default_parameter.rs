@@ -13,6 +13,30 @@ use actix_web::{
 
 use async_trait::async_trait;
 
+// Defaults
+// -------------------------------
+
+fn default_str_world() -> String {
+    "World".to_string()
+}
+
+fn default_float_1() -> f64 {
+    1
+}
+
+fn default_int_1() -> i64 {
+    1
+}
+
+fn opt_default_float_1() -> Option<f64> {
+    Some(1)
+}
+
+fn opt_default_int_1() -> Option<i64> {
+    Some(1)
+}
+
+
 // Enums
 // -------------------------------
 
@@ -22,5 +46,22 @@ use async_trait::async_trait;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct GreetUserPath {
+    #[serde(default="default_str_world")]
     pub user: String,
+    #[serde(rename="v1_float", default="default_float_1")]
+    pub v_1_float: f64,
+    #[serde(rename="v1_int", default="default_int_1")]
+    pub v_1_int: i64,
+    #[serde(rename="v1_opt_float", default="opt_default_float_1")]
+    pub v_1_opt_float: Option<f64>,
+    #[serde(rename="v1_opt_int", default="opt_default_int_1")]
+    pub v_1_opt_int: Option<i64>,
+    #[serde(rename="n1", default="opt_default_int_1")]
+    pub n_1: Option<i64>,
+    #[serde(rename="n2")]
+    pub n_2: i64,
+    #[serde(rename="n3")]
+    pub n_3: Option<i64>,
+    #[serde(rename="n4", default="default_int_1")]
+    pub n_4: i64,
 }
