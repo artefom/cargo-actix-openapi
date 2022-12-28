@@ -2,15 +2,18 @@ api:
   definitions:
   - name: GreetUserPath
     data: !Struct
+      doc: null
       properties:
         user: String
   - name: GreetUserBodyObj
     data: !Struct
+      doc: null
       properties:
         foo: i64
         bar: f64
   - name: GreetUserBody
     data: !Struct
+      doc: null
       properties:
         str: String
         obj: GreetUserBodyObj

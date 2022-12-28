@@ -15,3 +15,24 @@ use async_trait::async_trait;
 
 // Enums
 // -------------------------------
+
+
+// Struct
+// -------------------------------
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct GreetUserPath {
+    pub user: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct GreetUserBodyObj {
+    pub foo: i64,
+    pub bar: f64,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct GreetUserBody {
+    pub str: String,
+    pub obj: GreetUserBodyObj,
+}

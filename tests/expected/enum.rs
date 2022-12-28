@@ -30,3 +30,21 @@ pub enum GreetUserResponseStrEnum {
     #[serde(rename = "Hello, \\\"World2\\\"!")]
     HelloWorld2,
 }
+
+
+// Struct
+// -------------------------------
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct GreetUserPath {
+    pub user: String,
+}
+
+/// Enum container
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct GreetUserResponse {
+    #[serde(rename="strEnum")]
+    pub strenum: GreetUserResponseStrEnum,
+    #[serde(rename="intEnum")]
+    pub intenum: i64,
+}

@@ -15,3 +15,117 @@ use async_trait::async_trait;
 
 // Enums
 // -------------------------------
+
+
+// Struct
+// -------------------------------
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct QuotaDetailsPath {
+    pub quota: String,
+}
+
+/// Quota specification
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct Quota {
+    pub replanish_interval: f64,
+    pub burst_capacity: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct MatchRule {
+}
+
+/// State information of the quota
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct QuotaState {
+    pub earliest_next_available: f64,
+    pub remaining_burst_capacity: i64,
+}
+
+/// Quota statistics, purely descriptive. Not used in Rate limiting decisions.
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct QuotaStats {
+    pub rpm: i64,
+}
+
+/// Full information about quota
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct QuotaDetails {
+    pub quota: Quota,
+    #[serde(rename="match")]
+    pub match_: Vec<MatchRule>,
+    pub state: QuotaState,
+    pub stats: QuotaStats,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct MatchRule {
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct CellTestQuery {
+    pub query: MatchRule,
+}
+
+/// Quota specification
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct Quota {
+    pub replanish_interval: f64,
+    pub burst_capacity: i64,
+}
+
+/// State information of the quota
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct QuotaState {
+    pub earliest_next_available: f64,
+    pub remaining_burst_capacity: i64,
+}
+
+/// Information about current cell state and matched quotas.
+/// Matched quotas are computed based on query.
+/// Info and state are computed dynamically based on matched quotas.
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct CellDetails {
+    pub quotas: Vec<String>,
+    pub info: Quota,
+    pub state: QuotaState,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct MatchRule {
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct CellUpdateQuery {
+    pub query: MatchRule,
+}
+
+/// Quota specification
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct Quota {
+    pub replanish_interval: f64,
+    pub burst_capacity: i64,
+}
+
+/// State information of the quota
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct QuotaState {
+    pub earliest_next_available: f64,
+    pub remaining_burst_capacity: i64,
+}
+
+/// Information about current cell state.
+/// Info and state are computed dynamically based on matched quotas.
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct CellInfo {
+    pub info: Quota,
+    pub state: QuotaState,
+}
+
+/// Result of the cell update. Allowed/Denied flag + cell info
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct UpdateResult {
+    pub allowed: bool,
+    pub details: CellInfo,
+}

@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 use openapiv3::OpenAPI;
 use serde::ser;
@@ -38,6 +38,72 @@ fn convert_enums(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::Ru
     enums
 }
 
+const RUST_KEYWORDS: &[&str] = &["match"];
+
+fn to_rust_identifier(val: &str) -> String {
+    let mut val = slug::slugify(val).replace('-', "_");
+
+    if RUST_KEYWORDS.contains(&val.as_str()) {
+        val = format!("{val}_");
+    }
+
+    val
+}
+
+fn render_annotation(vals: HashMap<String, String>) -> Option<String> {
+    let mut keyvals: Vec<String> = Vec::new();
+
+    for (key, value) in vals {
+        let value = templates::quote_str(&value);
+        keyvals.push(format!("{key}={value}"))
+    }
+
+    if keyvals.is_empty() {
+        return None;
+    }
+
+    let keyvals = keyvals.join(", ");
+
+    Some(format!("#[serde({keyvals})]"))
+}
+
+fn convert_structs(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::RustStruct> {
+    let mut enums = Vec::new();
+
+    for definition in defs {
+        let struct_def = match &definition.data {
+            models::types::DefinitionData::Struct(value) => value,
+            _ => continue,
+        };
+
+        let mut props = Vec::new();
+
+        for (prop_name, prop_type) in &struct_def.properties {
+            let title = to_rust_identifier(prop_name);
+
+            let mut annotation = HashMap::new();
+
+            if prop_name != &title {
+                annotation.insert("rename".to_string(), prop_name.clone());
+            };
+
+            props.push(templates::RustProp {
+                title,
+                annotation: render_annotation(annotation),
+                ptype: prop_type.to_string(),
+            })
+        }
+
+        enums.push(templates::RustStruct {
+            doc: struct_def.doc.clone(),
+            title: definition.name.clone(),
+            props,
+        })
+    }
+
+    enums
+}
+
 pub fn generate_api(spec: &str) -> Result<(String, String)> {
     let openapi: OpenAPI = serde_yaml::from_str(spec).expect("Could not deserialize input");
 
@@ -46,6 +112,7 @@ pub fn generate_api(spec: &str) -> Result<(String, String)> {
     let serialized_model = serde_yaml::to_string(&rust_module)?;
 
     let rust_module = templates::RustModule {
+        structs: convert_structs(&rust_module.api.definitions),
         enums: convert_enums(&rust_module.api.definitions),
     };
 

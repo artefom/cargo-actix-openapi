@@ -2,6 +2,7 @@ api:
   definitions:
   - name: GreetUserPath
     data: !Struct
+      doc: null
       properties:
         user: String
   - name: GreetUserResponseStrEnum
@@ -20,6 +21,7 @@ api:
         value: Hello, \"World2\"!
   - name: GreetUserResponse
     data: !Struct
+      doc: Enum container
       properties:
         strEnum: GreetUserResponseStrEnum
         intEnum: i64

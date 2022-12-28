@@ -321,7 +321,10 @@ where
 
         let def = Rc::new(Definition {
             name,
-            data: DefinitionData::Struct(RStruct { properties }),
+            data: DefinitionData::Struct(RStruct {
+                doc: None,
+                properties,
+            }),
         });
 
         defmaker.store.push(def.clone());
@@ -409,7 +412,7 @@ impl Inlining for Schema {
             Type::Boolean {} => InlineType::Boolean,
             Type::Object(val) => {
                 let name = get_schema_name(name, &self.schema_data.title);
-                val.inline(name, defmaker)?
+                inline_obj(val, name, defmaker, &self.schema_data.description)?
             }
             Type::Array(val) => {
                 let new_inline = match &val.items {
@@ -426,26 +429,32 @@ impl Inlining for Schema {
     }
 }
 
-impl Inlining for ObjectType {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
-        let mut properties = IndexMap::new();
+fn inline_obj(
+    obj: &ObjectType,
+    name: String,
+    defmaker: &mut DefinitionMaker,
+    doc: &Option<String>,
+) -> Result<InlineType> {
+    let mut properties = IndexMap::new();
 
-        for (prop_name, prop_schema) in self.properties.iter() {
-            let prop_schema = defmaker.ctx.deref_boxed(prop_schema)?;
-            let prop_name_camel = prop_name.to_case(Case::UpperCamel);
-            let itype = prop_schema.inline(format!("{name}{prop_name_camel}"), defmaker)?;
-            properties.insert(prop_name.clone(), itype);
-        }
-
-        let definition = Rc::new(Definition {
-            name,
-            data: DefinitionData::Struct(RStruct { properties }),
-        });
-
-        defmaker.store.push(definition.clone());
-
-        Ok(InlineType::Reference(definition))
+    for (prop_name, prop_schema) in obj.properties.iter() {
+        let prop_schema = defmaker.ctx.deref_boxed(prop_schema)?;
+        let prop_name_camel = prop_name.to_case(Case::UpperCamel);
+        let itype = prop_schema.inline(format!("{name}{prop_name_camel}"), defmaker)?;
+        properties.insert(prop_name.clone(), itype);
     }
+
+    let definition = Rc::new(Definition {
+        name,
+        data: DefinitionData::Struct(RStruct {
+            doc: doc.clone(),
+            properties,
+        }),
+    });
+
+    defmaker.store.push(definition.clone());
+
+    Ok(InlineType::Reference(definition))
 }
 
 pub struct DefinitionMaker<'a> {
@@ -515,6 +524,7 @@ struct RProp {}
 /// Something that can serialize into rust struct
 #[derive(Debug, Serialize)]
 pub struct RStruct {
+    pub doc: Option<String>,
     pub properties: IndexMap<String, InlineType>,
 }
 

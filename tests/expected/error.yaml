@@ -2,6 +2,7 @@ api:
   definitions:
   - name: GreetUserPath
     data: !Struct
+      doc: null
       properties:
         user: String
   - name: GreetUserResponseError
