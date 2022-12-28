@@ -41,7 +41,7 @@ pub struct RustModule {
     pub structs: Vec<RustStruct>,
 }
 
-pub fn quote_str(value: &String) -> String {
+pub fn quote_str(value: &str) -> String {
     format!(
         r#""{}""#,
         value.replace('\\', r#"\\"#).replace('"', r#"\""#),
