@@ -1,11 +1,11 @@
-openapi: '3.0.3'
+openapi: "3.0.3"
 info:
-  version: '1.0'
-  title: 'Hello World API'
+  version: "1.0"
+  title: "Hello World API"
 paths:
   /hello/{user}:
     parameters:
-      - $ref: '#/components/parameters/User'
+      - $ref: "#/components/parameters/User"
     get:
       operationId: greet_user
       summary: Returns a greeting to the user!
@@ -16,7 +16,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HelloUserResponse'
+                $ref: "#/components/schemas/HelloUserResponse"
 components:
   parameters:
     User:

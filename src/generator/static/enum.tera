@@ -1,0 +1,8 @@
+{%- macro render(model) -%}
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum {{ model.title }} {
+    {%- for variant in model.variants %}
+    {{ variant }},
+    {%- endfor %}
+}
+{%- endmacro render -%}

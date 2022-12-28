@@ -1,7 +1,7 @@
-openapi: '3.0.3'
+openapi: "3.0.3"
 info:
-  version: '1.0'
-  title: 'Hello World API'
+  version: "1.0"
+  title: "Hello World API"
 paths:
   /hello/{user}:
     parameters:
@@ -11,7 +11,7 @@ paths:
         description: The name of the user to greet.
         schema:
           type: string
-          default: 'World'
+          default: "World"
     get:
       operationId: greet_user
       summary: Returns a greeting to the user!

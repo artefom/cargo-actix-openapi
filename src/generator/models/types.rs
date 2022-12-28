@@ -474,7 +474,7 @@ pub struct RApiErr {
 
 #[derive(Debug, Serialize)]
 pub struct REnum {
-    variants: Vec<String>,
+    pub variants: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]

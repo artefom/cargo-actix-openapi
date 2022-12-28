@@ -47,6 +47,7 @@ fn compare(got: &String, expected_path: &String) {
 #[case("request_body_nested")]
 #[case("default_parameter")]
 #[case("error")]
+#[case("enum")]
 #[case("reference")]
 #[case("ratelimit")]
 fn test_specs(#[case] case_name: &str) -> Result<()> {

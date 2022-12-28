@@ -10,28 +10,28 @@ info:
 servers:
   - url: ./
 paths:
-  '/health':
+  "/health":
     get:
       tags:
         - health
       summary: Check service health
       operationId: health
       responses:
-        '200':
-          description: 'Service is ready'
+        "200":
+          description: "Service is ready"
           content:
             application/json:
               schema:
                 type: string
-                default: 'Ok'
-  '/quota':
+                default: "Ok"
+  "/quota":
     get:
       tags:
         - quota
       summary: List quotas
       operationId: quota_list
       responses:
-        '200':
+        "200":
           description: List of all quotas
           content:
             application/json:
@@ -44,30 +44,30 @@ paths:
                   - megb
                   - testquota
                   - anotherquota
-  '/quota/{quota}':
+  "/quota/{quota}":
     get:
       tags:
         - quota
       summary: Get quota details
       operationId: quota_details
       parameters:
-        - $ref: '#/components/parameters/quota'
+        - $ref: "#/components/parameters/quota"
       responses:
-        '200':
+        "200":
           description: Quota details, including current rpm and GCRA state
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuotaDetails'
-        '404':
+                $ref: "#/components/schemas/QuotaDetails"
+        "404":
           description: Quota not found
           content:
             application/json:
               schema:
                 title: Details
                 type: string
-                enum: ['Quota not found']
-  '/cell/test':
+                enum: ["Quota not found"]
+  "/cell/test":
     get:
       tags:
         - rate limiting
@@ -77,31 +77,31 @@ paths:
         Usefull for monitoring.
       operationId: cell_test
       parameters:
-        - $ref: '#/components/parameters/query'
+        - $ref: "#/components/parameters/query"
       responses:
-        '200':
+        "200":
           description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CellDetails'
-        '400':
+                $ref: "#/components/schemas/CellDetails"
+        "400":
           description: Duplicate key in query
           content:
             application/json:
               schema:
                 title: Details
                 type: string
-                enum: ['Duplicate query key']
-        '404':
+                enum: ["Duplicate query key"]
+        "404":
           description: No quotas matching given query found
           content:
             application/json:
               schema:
                 title: Details
                 type: string
-                enum: ['No quotas matching query found']
-  '/cell/update':
+                enum: ["No quotas matching query found"]
+  "/cell/update":
     post:
       tags:
         - rate limiting
@@ -111,30 +111,30 @@ paths:
         Strictest rate limitation of all matched queries applies
       operationId: cell_update
       parameters:
-        - $ref: '#/components/parameters/query'
+        - $ref: "#/components/parameters/query"
       responses:
-        '200':
+        "200":
           description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UpdateResult'
-        '400':
+                $ref: "#/components/schemas/UpdateResult"
+        "400":
           description: Duplicate key in query
           content:
             application/json:
               schema:
                 title: Details
                 type: string
-                enum: ['Duplicate query key']
-        '404':
+                enum: ["Duplicate query key"]
+        "404":
           description: No quotas matching given query found
           content:
             application/json:
               schema:
                 title: Details
                 type: string
-                enum: ['No quotas matching query found']
+                enum: ["No quotas matching query found"]
 components:
   parameters:
     quota:
@@ -190,7 +190,7 @@ components:
       required: true
       in: query
       schema:
-        $ref: '#/components/schemas/MatchRule'
+        $ref: "#/components/schemas/MatchRule"
   schemas:
     MatchRule:
       type: object
@@ -209,7 +209,7 @@ components:
         If at least one predicate is matching the incomming query, the rate limit is applied to the request
         Multiple rate limits can be applied to incomming request at once
       items:
-        $ref: '#/components/schemas/MatchRule'
+        $ref: "#/components/schemas/MatchRule"
     Quota:
       type: object
       title: Quota
@@ -247,13 +247,13 @@ components:
         - stats
       properties:
         quota:
-          $ref: '#/components/schemas/Quota'
+          $ref: "#/components/schemas/Quota"
         match:
-          $ref: '#/components/schemas/MatchRules'
+          $ref: "#/components/schemas/MatchRules"
         state:
-          $ref: '#/components/schemas/QuotaState'
+          $ref: "#/components/schemas/QuotaState"
         stats:
-          $ref: '#/components/schemas/QuotaStats'
+          $ref: "#/components/schemas/QuotaStats"
     QuotaState:
       type: object
       title: QuotaState
@@ -293,9 +293,9 @@ components:
         - match
       properties:
         quota:
-          $ref: '#/components/schemas/Quota'
+          $ref: "#/components/schemas/Quota"
         match:
-          $ref: '#/components/schemas/MatchRules'
+          $ref: "#/components/schemas/MatchRules"
     CellDetails:
       type: object
       title: CellDetails
@@ -316,9 +316,9 @@ components:
             type: string
             description: Quota label
         info:
-          $ref: '#/components/schemas/Quota'
+          $ref: "#/components/schemas/Quota"
         state:
-          $ref: '#/components/schemas/QuotaState'
+          $ref: "#/components/schemas/QuotaState"
     CellInfo:
       type: object
       title: CellInfo
@@ -330,9 +330,9 @@ components:
         - state
       properties:
         info:
-          $ref: '#/components/schemas/Quota'
+          $ref: "#/components/schemas/Quota"
         state:
-          $ref: '#/components/schemas/QuotaState'
+          $ref: "#/components/schemas/QuotaState"
     UpdateResult:
       type: object
       title: UpdateResult
@@ -351,4 +351,4 @@ components:
             this request.
             If request was rejected, rate limit was not updated
         details:
-          $ref: '#/components/schemas/CellInfo'
+          $ref: "#/components/schemas/CellInfo"

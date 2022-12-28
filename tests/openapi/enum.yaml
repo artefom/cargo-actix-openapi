@@ -22,17 +22,4 @@ paths:
             application/json:
               schema:
                 type: string
-        404:
-          description: User not found
-          content:
-            application/json:
-              schema:
-                type: string
-                enum: ["Not found"]
-        400:
-          description: Input data error
-          content:
-            application/json:
-              schema:
-                type: string
-                enum: ["Invalid character in name", "Name contains space"]
+                enum: ["V1", "V2", "V3"]
