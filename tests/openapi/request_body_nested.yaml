@@ -29,14 +29,13 @@ paths:
                   type: string
                 obj:
                   type: object
-                  required:
-                    - foo
-                    - bar
                   properties:
                     foo:
                       type: integer
+                      default: 1
                     bar:
                       type: number
+                      default: 0.1
       responses:
         200:
           description: Returns the greeting.

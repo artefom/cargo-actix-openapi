@@ -16,6 +16,14 @@ use async_trait::async_trait;
 // Defaults
 // -------------------------------
 
+fn default_int_1() -> i64 {
+    1
+}
+
+fn default_float_0_1() -> f64 {
+    0.1
+}
+
 
 // Enums
 // -------------------------------
@@ -31,7 +39,9 @@ pub struct GreetUserPath {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct GreetUserBodyObj {
+    #[serde(default="default_int_1")]
     pub foo: i64,
+    #[serde(default="default_float_0_1")]
     pub bar: f64,
 }
 

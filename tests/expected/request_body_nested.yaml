@@ -8,17 +8,25 @@ api:
         rename: user
         default: null
         ptype: String
+  - name: default_int_1
+    data: !DefaultProvider
+      vtype: i64
+      value: '1'
+  - name: default_float_0_1
+    data: !DefaultProvider
+      vtype: f64
+      value: '0.1'
   - name: GreetUserBodyObj
     data: !Struct
       doc: null
       properties:
       - name: foo
         rename: foo
-        default: null
+        default: default_int_1
         ptype: i64
       - name: bar
         rename: bar
-        default: null
+        default: default_float_0_1
         ptype: f64
   - name: GreetUserBody
     data: !Struct
