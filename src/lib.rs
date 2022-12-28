@@ -6,6 +6,6 @@ mod generator;
 use anyhow::Result;
 mod openapictx;
 
-pub fn generate_api(spec: &str) -> Result<String> {
+pub fn generate_api(spec: &str) -> Result<(String, String)> {
     generator::generate_api(spec)
 }

@@ -11,6 +11,8 @@ openapiv3 = "*"
 anyhow = "*"
 convert_case = "*"
 indexmap = "*"
+tera = "1"
+
 
 [dev-dependencies]
 pretty_assertions = "*"

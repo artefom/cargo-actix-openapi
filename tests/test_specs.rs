@@ -1,21 +1,32 @@
-mod common;
+use std::{
+    fs::{read_to_string, File},
+    io::Write,
+};
 
 use cargo_actix_openapi;
 
 use anyhow::Result;
-use common::save_expected;
 
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 
 static OVERWRITE: bool = true;
 
-fn compare(name: &str, got: &String, expected: Option<&String>) {
+pub fn save_expected(filename: &str, data: &str) -> Result<(), std::io::Error> {
+    let mut file = File::create(filename)?;
+    file.write_all(data.as_bytes())?;
+
+    Ok(())
+}
+
+fn compare(got: &String, expected_path: &String) {
+    let expected = read_to_string(expected_path).ok();
+
     let expected = match expected {
-        Some(value) => value,
+        Some(ref value) => value,
         None => {
             if OVERWRITE == true {
-                save_expected(name, &got).expect("Could not save expected");
+                save_expected(expected_path, &got).expect("Could not save expected");
                 got
             } else {
                 panic!("Could not get expected result")
@@ -24,7 +35,7 @@ fn compare(name: &str, got: &String, expected: Option<&String>) {
     };
 
     if expected != got && OVERWRITE {
-        save_expected(name, &got).expect("Could not save expected");
+        save_expected(expected_path, &got).expect("Could not save expected");
     }
 
     assert_eq!(expected, got);
@@ -39,14 +50,16 @@ fn compare(name: &str, got: &String, expected: Option<&String>) {
 #[case("reference")]
 #[case("ratelimit")]
 fn test_specs(#[case] case_name: &str) -> Result<()> {
-    let data = common::load_openapi_case(case_name).expect("Could not read test case");
+    let filename = format!("tests/openapi/{case_name}.yaml");
+    let expected_filename = format!("tests/expected/{case_name}.rs");
+    let expected_model = format!("tests/expected/{case_name}.yaml");
 
-    let spec = data.spec;
-    let expected = data.expected;
+    let spec = read_to_string(filename)?;
 
-    let got = cargo_actix_openapi::generate_api(&spec)?;
+    let (got_model, got) = cargo_actix_openapi::generate_api(&spec)?;
 
-    compare(case_name, &got, expected.as_ref());
+    compare(&got, &expected_filename);
+    compare(&got_model, &expected_model);
 
     Ok(())
 }
