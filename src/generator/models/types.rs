@@ -15,7 +15,7 @@ use openapiv3::{
 };
 use serde::{Serialize, Serializer};
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 
 use crate::openapictx::{
     CookieParameter, Dereferencing, HeaderParaemter, OpenApiCtx, ParameterStore, ParametersType,
@@ -337,14 +337,69 @@ where
     }
 }
 
+pub fn sanitize_rust_identifier(val: &String) -> Result<String> {
+    let mut val = slug::slugify(val).to_case(Case::UpperCamel);
+
+    if val
+        .chars()
+        .next()
+        .ok_or(anyhow!("Identifier does not contain latin characters"))?
+        .is_numeric()
+    {
+        val = format!("V{}", val);
+    };
+
+    Ok(val)
+}
+
+impl Inlining for Vec<&String> {
+    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
+        let mut variants = Vec::new();
+        for variant in self {
+            let variant_value = (*variant).clone();
+            variants.push(REnumVariant {
+                name: sanitize_rust_identifier(&variant_value)
+                    .context("Could not get name for enum value")?,
+                value: format!("{variant_value}"),
+            })
+        }
+        let definition = Rc::new(Definition {
+            name: name,
+            data: DefinitionData::Enum(REnum { variants }),
+        });
+        defmaker.store.push(definition.clone());
+        Ok(InlineType::Reference(definition))
+    }
+}
+
+fn remove_options<T>(arr: &Vec<Option<T>>) -> Result<Vec<&T>> {
+    let mut without_options = Vec::new();
+
+    for val in arr {
+        let val = val.as_ref().ok_or(anyhow!("Array contains null"))?;
+        without_options.push(val);
+    }
+
+    Ok(without_options)
+}
+
 impl Inlining for Schema {
     fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
         let SchemaKind::Type(schema_type) = &self.schema_kind else {panic!("Only type schemas are implemented")};
 
         let itype = match schema_type {
-            Type::String(_) => InlineType::String,
+            Type::String(value) => {
+                if value.enumeration.len() == 0 {
+                    InlineType::String
+                } else {
+                    let name = get_schema_name(name, &self.schema_data.title);
+                    let variants = remove_options(&value.enumeration)
+                        .context("Could not serialize enum variants")?;
+                    variants.inline(name, defmaker)?
+                }
+            }
             Type::Number(_) => InlineType::Float,
-            Type::Integer(_) => InlineType::Integer,
+            Type::Integer(value) => InlineType::Integer,
             Type::Boolean {} => InlineType::Boolean,
             Type::Object(val) => {
                 let name = get_schema_name(name, &self.schema_data.title);
@@ -473,8 +528,14 @@ pub struct RApiErr {
 }
 
 #[derive(Debug, Serialize)]
+pub struct REnumVariant {
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct REnum {
-    pub variants: Vec<String>,
+    pub variants: Vec<REnumVariant>,
 }
 
 #[derive(Debug, Serialize)]

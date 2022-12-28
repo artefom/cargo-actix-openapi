@@ -20,9 +20,18 @@ fn convert_enums(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::Ru
             _ => continue,
         };
 
+        let mut variants = Vec::new();
+
+        for variant in &enum_def.variants {
+            variants.push(templates::RustEnumVariant {
+                title: variant.name.clone(),
+                value: format!("{}", variant.value),
+            })
+        }
+
         enums.push(templates::RustEnum {
             title: definition.name.clone(),
-            variants: enum_def.variants.clone(),
+            variants: variants,
         })
     }
 

@@ -4,6 +4,24 @@ api:
     data: !Struct
       properties:
         user: String
+  - name: GreetUserResponseStrEnum
+    data: !Enum
+      variants:
+      - name: FirstVariant
+        value: First Variant
+      - name: SecondVariant
+        value: Second variant $
+      - name: V123
+        value: '!123'
+      - name: HelloWorld
+        value: Hello, "World"
+      - name: HelloWorld2
+        value: Hello, \"World2\"!
+  - name: GreetUserResponse
+    data: !Struct
+      properties:
+        strEnum: GreetUserResponseStrEnum
+        intEnum: i64
   operations:
   - name: greet_user
     path: /hello/{user}
@@ -12,4 +30,4 @@ api:
     param_path: web::Path<GreetUserPath>
     param_query: null
     param_body: null
-    response: web::Json<String>
+    response: web::Json<GreetUserResponse>

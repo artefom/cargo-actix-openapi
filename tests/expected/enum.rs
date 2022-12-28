@@ -15,3 +15,17 @@ use async_trait::async_trait;
 
 // Enums
 // -------------------------------
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum GreetUserResponseStrEnum {
+    #[serde(rename = "First Variant")]
+    FirstVariant,
+    #[serde(rename = "Second variant $")]
+    SecondVariant,
+    #[serde(rename = "!123")]
+    V123,
+    #[serde(rename = "Hello, \"World\"")]
+    HelloWorld,
+    #[serde(rename = "Hello, \\\"World2\\\"!")]
+    HelloWorld2,
+}

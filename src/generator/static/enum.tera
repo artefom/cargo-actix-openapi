@@ -2,7 +2,8 @@
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum {{ model.title }} {
     {%- for variant in model.variants %}
-    {{ variant }},
+    #[serde(rename = {{ variant.value | quote }})]
+    {{ variant.title }},
     {%- endfor %}
 }
 {%- endmacro render -%}

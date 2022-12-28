@@ -7,10 +7,12 @@ edition = "2021"
 [dependencies]
 serde = { version = "*", features = ["derive"] }
 serde_yaml = "*"
+serde_repr = "*"
 openapiv3 = "*"
 anyhow = "*"
 convert_case = "*"
 indexmap = "*"
+slug = "*"
 tera = "1"
 
 
