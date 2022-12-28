@@ -94,7 +94,7 @@ fn to_rust_operation(
     path: &str,
     method: HttpMethod,
     operation: &openapiv3::Operation,
-    global_params: &Vec<ReferenceOr<Parameter>>,
+    global_params: &[ReferenceOr<Parameter>],
 ) -> Result<Operation> {
     // Get operation name
     let Some(name) = &operation.operation_id else {
@@ -120,11 +120,11 @@ fn to_rust_operation(
         .query_parameters
         .inline(format!("{name_upper}Query"), defmaker)?;
 
-    if params_spliited.header_parameters.len() != 0 {
+    if !params_spliited.header_parameters.is_empty() {
         bail!("Header parameters not supported")
     };
 
-    if params_spliited.cookie_parameters.len() != 0 {
+    if !params_spliited.cookie_parameters.is_empty() {
         bail!("Cookie parameters not supported")
     };
 
@@ -139,16 +139,16 @@ fn to_rust_operation(
     Ok(Operation {
         name: name.clone(),
         path: path.to_string(),
-        method: method,
+        method,
 
-        doc: doc,
+        doc,
         param_path: path_params_inline,
         param_query: query_params_inline,
-        param_body: param_body,
+        param_body,
 
         // Response
         // -----------------------------
-        response: response,
+        response,
     })
 }
 
@@ -178,7 +178,7 @@ pub fn to_rust_module(spec: &OpenAPI) -> Result<RustModule> {
     Ok(RustModule {
         api: ApiService {
             definitions: defmaker.store,
-            operations: operations,
+            operations,
         },
     })
 }

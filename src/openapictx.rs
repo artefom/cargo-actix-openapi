@@ -211,7 +211,7 @@ fn deref_any<'a, T>(components: &'a Option<Components>, obj_ref: &str) -> Result
 where
     T: Dereferencing<T>,
 {
-    let mut splitted = obj_ref.split("/");
+    let mut splitted = obj_ref.split('/');
 
     let (Some(hashsymbol),Some(comp),Some(namespace),Some(ref_name)) = (splitted.next(), splitted.next(), splitted.next(), splitted.next()) else {
         bail!("Invalid reference")
@@ -262,8 +262,8 @@ impl<'a> OpenApiCtx<'a> {
 
     pub fn split_parameters(
         &self,
-        global_params: &'a Vec<ReferenceOr<Parameter>>,
-        local_params: &'a Vec<ReferenceOr<Parameter>>,
+        global_params: &'a [ReferenceOr<Parameter>],
+        local_params: &'a [ReferenceOr<Parameter>],
     ) -> Result<ParametersSplitted<'a>> {
         let mut query_parameters = Vec::new();
         let mut header_parameters = Vec::new();

@@ -6,6 +6,7 @@ api:
         user: String
   - name: GreetUserResponseStrEnum
     data: !Enum
+      doc: String enum example
       variants:
       - name: FirstVariant
         value: First Variant

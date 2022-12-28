@@ -22,9 +22,11 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Enum container"
                 properties:
                   strEnum:
                     type: string
+                    description: "String enum example"
                     enum:
                       [
                         "First Variant",
@@ -35,4 +37,5 @@ paths:
                       ]
                   intEnum:
                     type: integer
+                    description: "Integer enum example"
                     enum: [1, 2, 3]

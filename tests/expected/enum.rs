@@ -16,6 +16,7 @@ use async_trait::async_trait;
 // Enums
 // -------------------------------
 
+/// String enum example
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum GreetUserResponseStrEnum {
     #[serde(rename = "First Variant")]

@@ -2,7 +2,6 @@ use std::rc::Rc;
 
 use openapiv3::OpenAPI;
 use serde::ser;
-use serde_yaml;
 
 use anyhow::{Context, Result};
 
@@ -25,13 +24,14 @@ fn convert_enums(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::Ru
         for variant in &enum_def.variants {
             variants.push(templates::RustEnumVariant {
                 title: variant.name.clone(),
-                value: format!("{}", variant.value),
+                value: variant.value.to_string(),
             })
         }
 
         enums.push(templates::RustEnum {
+            doc: enum_def.doc.clone(),
             title: definition.name.clone(),
-            variants: variants,
+            variants,
         })
     }
 
@@ -51,5 +51,5 @@ pub fn generate_api(spec: &str) -> Result<(String, String)> {
 
     let serialized = templates::render_rust_module(rust_module)?;
 
-    return Ok((serialized_model, serialized));
+    Ok((serialized_model, serialized))
 }

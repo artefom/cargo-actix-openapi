@@ -190,7 +190,7 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
                 _ => bail!("Error schemas must be string"),
             };
 
-            if schema.enumeration.len() == 0 {
+            if schema.enumeration.is_empty() {
                 bail!("Error schemas must contain enumeration")
             };
 
@@ -208,7 +208,7 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
         }
 
         let definition = Rc::new(Definition {
-            name: name,
+            name,
             data: DefinitionData::ApiErr(RApiErr {
                 variants: api_err_variants,
             }),
@@ -220,15 +220,15 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
 
 fn is_success(code: &StatusCode) -> bool {
     match code.deref() {
-        StatusCode::Code(value) => value >= &200 && value < &300,
-        StatusCode::Range(value) => value >= &200 && value < &300,
+        StatusCode::Code(value) => (&200..&300).contains(&value),
+        StatusCode::Range(value) => (&200..&300).contains(&value),
     }
 }
 /// Get success response code
 /// If there is more that one success response, Returns an error
-fn get_success_response<'a>(
-    responses: &'a IndexMap<StatusCode, ReferenceOr<Response>>,
-) -> Result<(&'a StatusCode, &'a ReferenceOr<Response>)> {
+fn get_success_response(
+    responses: &IndexMap<StatusCode, ReferenceOr<Response>>,
+) -> Result<(&StatusCode, &ReferenceOr<Response>)> {
     let success_responses: Vec<(&StatusCode, &ReferenceOr<Response>)> = responses
         .iter()
         .filter(|(status_code, x)| is_success(status_code))
@@ -245,9 +245,9 @@ fn get_success_response<'a>(
     Ok((success_status, success_response))
 }
 
-fn get_error_responses<'a>(
-    responses: &'a IndexMap<StatusCode, ReferenceOr<Response>>,
-) -> IndexMap<&'a StatusCode, &'a ReferenceOr<Response>> {
+fn get_error_responses(
+    responses: &IndexMap<StatusCode, ReferenceOr<Response>>,
+) -> IndexMap<&StatusCode, &ReferenceOr<Response>> {
     responses
         .iter()
         .filter(|(status_code, x)| !is_success(status_code))
@@ -274,7 +274,7 @@ impl Inlining for Responses {
         // Render error responses
         let error_responses = get_error_responses(&self.responses);
 
-        let res = if error_responses.len() > 0 {
+        let res = if !error_responses.is_empty() {
             let err_inline = error_responses.inline(format!("{name}Error"), defmaker)?;
             InlineType::Result(Rc::new(success_inline), Rc::new(err_inline))
         } else {
@@ -303,7 +303,7 @@ where
     Vec<T>: ParameterStore,
 {
     fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<Option<InlineType>> {
-        if self.len() == 0 {
+        if self.is_empty() {
             return Ok(None);
         }
         let mut properties = IndexMap::new();
@@ -311,17 +311,17 @@ where
             let param_data = param.data();
             let inline_name = format!("{}{}", &name, param_data.name.to_case(Case::UpperCamel));
             let inline = param.data().inline(inline_name, defmaker)?;
-            match properties.insert(param.data().name.clone(), inline) {
-                Some(_) => bail!("Duplicate parameter name"),
-                None => (),
+            if properties
+                .insert(param.data().name.clone(), inline)
+                .is_some()
+            {
+                bail!("Duplicate parameter name")
             }
         }
 
         let def = Rc::new(Definition {
-            name: name,
-            data: DefinitionData::Struct(RStruct {
-                properties: properties,
-            }),
+            name,
+            data: DefinitionData::Struct(RStruct { properties }),
         });
 
         defmaker.store.push(def.clone());
@@ -343,7 +343,7 @@ pub fn sanitize_rust_identifier(val: &String) -> Result<String> {
     if val
         .chars()
         .next()
-        .ok_or(anyhow!("Identifier does not contain latin characters"))?
+        .ok_or_else(|| anyhow!("Identifier does not contain latin characters"))?
         .is_numeric()
     {
         val = format!("V{}", val);
@@ -352,31 +352,37 @@ pub fn sanitize_rust_identifier(val: &String) -> Result<String> {
     Ok(val)
 }
 
-impl Inlining for Vec<&String> {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
-        let mut variants = Vec::new();
-        for variant in self {
-            let variant_value = (*variant).clone();
-            variants.push(REnumVariant {
-                name: sanitize_rust_identifier(&variant_value)
-                    .context("Could not get name for enum value")?,
-                value: format!("{variant_value}"),
-            })
-        }
-        let definition = Rc::new(Definition {
-            name: name,
-            data: DefinitionData::Enum(REnum { variants }),
-        });
-        defmaker.store.push(definition.clone());
-        Ok(InlineType::Reference(definition))
+fn make_inline(
+    name: String,
+    defmaker: &mut DefinitionMaker,
+    data: Vec<&String>,
+    doc: &Option<String>,
+) -> Result<InlineType> {
+    let mut variants = Vec::new();
+    for variant in data {
+        let variant_value = (*variant).clone();
+        variants.push(REnumVariant {
+            name: sanitize_rust_identifier(&variant_value)
+                .context("Could not get name for enum value")?,
+            value: variant_value,
+        })
     }
+    let definition = Rc::new(Definition {
+        name,
+        data: DefinitionData::Enum(REnum {
+            doc: doc.clone(),
+            variants,
+        }),
+    });
+    defmaker.store.push(definition.clone());
+    Ok(InlineType::Reference(definition))
 }
 
 fn remove_options<T>(arr: &Vec<Option<T>>) -> Result<Vec<&T>> {
     let mut without_options = Vec::new();
 
     for val in arr {
-        let val = val.as_ref().ok_or(anyhow!("Array contains null"))?;
+        let val = val.as_ref().ok_or_else(|| anyhow!("Array contains null"))?;
         without_options.push(val);
     }
 
@@ -389,13 +395,13 @@ impl Inlining for Schema {
 
         let itype = match schema_type {
             Type::String(value) => {
-                if value.enumeration.len() == 0 {
+                if value.enumeration.is_empty() {
                     InlineType::String
                 } else {
                     let name = get_schema_name(name, &self.schema_data.title);
                     let variants = remove_options(&value.enumeration)
                         .context("Could not serialize enum variants")?;
-                    variants.inline(name, defmaker)?
+                    make_inline(name, defmaker, variants, &self.schema_data.description)?
                 }
             }
             Type::Number(_) => InlineType::Float,
@@ -432,10 +438,8 @@ impl Inlining for ObjectType {
         }
 
         let definition = Rc::new(Definition {
-            name: name,
-            data: DefinitionData::Struct(RStruct {
-                properties: properties,
-            }),
+            name,
+            data: DefinitionData::Struct(RStruct { properties }),
         });
 
         defmaker.store.push(definition.clone());
@@ -535,6 +539,7 @@ pub struct REnumVariant {
 
 #[derive(Debug, Serialize)]
 pub struct REnum {
+    pub doc: Option<String>,
     pub variants: Vec<REnumVariant>,
 }
 
@@ -553,8 +558,8 @@ pub struct Definition {
 
 fn get_schema_name(name: String, title: &Option<String>) -> String {
     if let Some(val) = title {
-        return val.clone();
-    };
-
-    return name;
+        val.clone()
+    } else {
+        name
+    }
 }
