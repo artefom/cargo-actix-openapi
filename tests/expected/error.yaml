@@ -9,7 +9,7 @@ api:
         default: null
         type_: String
         doc: The name of the user to greet.
-  - name: GreetUserResponseError
+  - name: GreetUserError
     data: !ApiErr
       doc: |-
         Status NOT_FOUND:
@@ -35,4 +35,4 @@ api:
     param_path: web::Path<GreetUserPath>
     param_query: null
     param_body: null
-    response: Result<web::Json<String>,Detailed<GreetUserResponseError>>
+    response: Result<web::Json<String>,Detailed<GreetUserError>>

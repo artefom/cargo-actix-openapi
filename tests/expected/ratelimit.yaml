@@ -85,7 +85,7 @@ api:
         default: null
         type_: QuotaStats
         doc: Quota statistics, purely descriptive. Not used in Rate limiting decisions.
-  - name: QuotaDetailsResponseError
+  - name: QuotaDetailsError
     data: !ApiErr
       doc: |-
         Status NOT_FOUND:
@@ -162,7 +162,7 @@ api:
         default: null
         type_: QuotaState
         doc: State information of the quota
-  - name: CellTestResponseError
+  - name: CellTestError
     data: !ApiErr
       doc: |-
         Status BAD_REQUEST:
@@ -238,7 +238,7 @@ api:
     param_path: web::Path<QuotaDetailsPath>
     param_query: null
     param_body: null
-    response: Result<web::Json<QuotaDetails>,Detailed<QuotaDetailsResponseError>>
+    response: Result<web::Json<QuotaDetails>,Detailed<QuotaDetailsError>>
   - name: cell_test
     path: /cell/test
     method: Get
@@ -246,7 +246,7 @@ api:
     param_path: null
     param_query: web::Query<CellTestQuery>
     param_body: null
-    response: Result<web::Json<CellDetails>,Detailed<CellTestResponseError>>
+    response: Result<web::Json<CellDetails>,Detailed<CellTestError>>
   - name: cell_update
     path: /cell/update
     method: Post
@@ -254,4 +254,4 @@ api:
     param_path: null
     param_query: web::Query<CellTestQuery>
     param_body: null
-    response: Result<web::Json<UpdateResult>,Detailed<CellTestResponseError>>
+    response: Result<web::Json<UpdateResult>,Detailed<CellTestError>>

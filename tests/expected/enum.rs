@@ -20,7 +20,7 @@ use async_trait::async_trait;
 // -------------------------------
 /// String enum example
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub enum GreetUserResponseStrEnum {
+pub enum GreetUserStrEnum {
     #[serde(rename = "First Variant")]
     FirstVariant,
     #[serde(rename = "Second variant $")]
@@ -44,10 +44,10 @@ pub struct GreetUserPath {
 
 /// Enum container
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserResponse {
+pub struct GreetUser {
     /// String enum example
     #[serde(rename = "strEnum")]
-    pub str_enum: GreetUserResponseStrEnum,
+    pub str_enum: GreetUserStrEnum,
     /// Integer enum example
     #[serde(rename = "intEnum")]
     pub int_enum: i64,
@@ -136,7 +136,8 @@ where
     /// Returns a greeting to the user!
     async fn greet_user(
         data: web::Data<S>,
-    ) -> web::Json<GreetUserResponse>;
+        path: web::Path<GreetUserPath>,
+    ) -> web::Json<GreetUser>;
 }
 
 // Run service function (+ helper functions)

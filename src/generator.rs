@@ -153,12 +153,36 @@ fn convert_methods(i_ops: &Vec<models::Operation>) -> Vec<templates::RustMethod>
     let mut operations = Vec::new();
 
     for op in i_ops {
+        let mut args = Vec::new();
+
+        if let Some(param) = &op.param_body {
+            args.push(templates::RustMethodArg {
+                name: "body".to_string(),
+                type_: param.to_string(),
+            })
+        }
+
+        if let Some(param) = &op.param_path {
+            args.push(templates::RustMethodArg {
+                name: "path".to_string(),
+                type_: param.to_string(),
+            })
+        }
+
+        if let Some(param) = &op.param_query {
+            args.push(templates::RustMethodArg {
+                name: "query".to_string(),
+                type_: param.to_string(),
+            })
+        }
+
         operations.push(templates::RustMethod {
             operation_id: op.name.clone(),
             response_type: op.response.to_string(),
             path: op.path.clone(),
             method: op.method.to_string(),
             doc: op.doc.clone(),
+            args,
         })
     }
 

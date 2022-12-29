@@ -124,6 +124,9 @@ where
     {{- method.doc | comment | newline | indent(n=4) }}
     async fn {{method.operation_id}}(
         data: web::Data<S>,
+        {%- for arg in method.args %}
+        {{arg.name}}: {{arg.type_}},
+        {%- endfor %}
     ) -> {{method.response_type}};
     {%- endfor %}
 }

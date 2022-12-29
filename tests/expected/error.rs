@@ -106,13 +106,13 @@ where
 /// Status BAD_REQUEST:
 /// Input data error
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub enum GreetUserResponseError {
+pub enum GreetUserError {
     NotFound,
     InvalidCharacterInName,
     NameContainsSpace,
 }
 
-impl Display for GreetUserResponseError {
+impl Display for GreetUserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NotFound => {
@@ -128,7 +128,7 @@ impl Display for GreetUserResponseError {
     }
 }
 
-impl StatusCoded for GreetUserResponseError {
+impl StatusCoded for GreetUserError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::NotFound => StatusCode::NOT_FOUND,
@@ -149,7 +149,8 @@ where
     /// Returns a greeting to the user!
     async fn greet_user(
         data: web::Data<S>,
-    ) -> Result<web::Json<String>,Detailed<GreetUserResponseError>>;
+        path: web::Path<GreetUserPath>,
+    ) -> Result<web::Json<String>,Detailed<GreetUserError>>;
 }
 
 // Run service function (+ helper functions)

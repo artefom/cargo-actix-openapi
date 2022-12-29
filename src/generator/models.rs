@@ -139,7 +139,7 @@ fn to_rust_operation(
 
     let response = operation
         .responses
-        .inline(format!("{name_upper}Response"), defmaker)?;
+        .inline(format!("{name_upper}"), defmaker)?;
 
     Ok(Operation {
         name: name.clone(),

@@ -232,11 +232,11 @@ where
 /// Status NOT_FOUND:
 /// Quota not found
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub enum QuotaDetailsResponseError {
+pub enum QuotaDetailsError {
     QuotaNotFound,
 }
 
-impl Display for QuotaDetailsResponseError {
+impl Display for QuotaDetailsError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::QuotaNotFound => {
@@ -246,7 +246,7 @@ impl Display for QuotaDetailsResponseError {
     }
 }
 
-impl StatusCoded for QuotaDetailsResponseError {
+impl StatusCoded for QuotaDetailsError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::QuotaNotFound => StatusCode::NOT_FOUND,
@@ -260,12 +260,12 @@ impl StatusCoded for QuotaDetailsResponseError {
 /// Status NOT_FOUND:
 /// No quotas matching given query found
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub enum CellTestResponseError {
+pub enum CellTestError {
     DuplicateQueryKey,
     NoQuotasMatchingQueryFound,
 }
 
-impl Display for CellTestResponseError {
+impl Display for CellTestError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::DuplicateQueryKey => {
@@ -278,7 +278,7 @@ impl Display for CellTestResponseError {
     }
 }
 
-impl StatusCoded for CellTestResponseError {
+impl StatusCoded for CellTestError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::DuplicateQueryKey => StatusCode::BAD_REQUEST,
@@ -306,15 +306,18 @@ where
     /// Get quota details
     async fn quota_details(
         data: web::Data<S>,
-    ) -> Result<web::Json<QuotaDetails>,Detailed<QuotaDetailsResponseError>>;
+        path: web::Path<QuotaDetailsPath>,
+    ) -> Result<web::Json<QuotaDetails>,Detailed<QuotaDetailsError>>;
     /// Get current rate limitation state for given query
     async fn cell_test(
         data: web::Data<S>,
-    ) -> Result<web::Json<CellDetails>,Detailed<CellTestResponseError>>;
+        query: web::Query<CellTestQuery>,
+    ) -> Result<web::Json<CellDetails>,Detailed<CellTestError>>;
     /// Try to accomodate for one request
     async fn cell_update(
         data: web::Data<S>,
-    ) -> Result<web::Json<UpdateResult>,Detailed<CellTestResponseError>>;
+        query: web::Query<CellTestQuery>,
+    ) -> Result<web::Json<UpdateResult>,Detailed<CellTestError>>;
 }
 
 // Run service function (+ helper functions)

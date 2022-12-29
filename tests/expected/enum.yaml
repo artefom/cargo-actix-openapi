@@ -9,7 +9,7 @@ api:
         default: null
         type_: String
         doc: The name of the user to greet.
-  - name: GreetUserResponseStrEnum
+  - name: GreetUserStrEnum
     data: !Enum
       doc: String enum example
       variants:
@@ -23,14 +23,14 @@ api:
         value: Hello, "World"
       - name: HelloWorld2
         value: Hello, \"World2\"!
-  - name: GreetUserResponse
+  - name: GreetUser
     data: !Struct
       doc: Enum container
       properties:
       - name: str_enum
         rename: strEnum
         default: null
-        type_: GreetUserResponseStrEnum
+        type_: GreetUserStrEnum
         doc: String enum example
       - name: int_enum
         rename: intEnum
@@ -45,4 +45,4 @@ api:
     param_path: web::Path<GreetUserPath>
     param_query: null
     param_body: null
-    response: web::Json<GreetUserResponse>
+    response: web::Json<GreetUser>

@@ -60,12 +60,19 @@ pub struct RustError {
 }
 
 #[derive(Debug, Serialize)]
+pub struct RustMethodArg {
+    pub name: String,
+    pub type_: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct RustMethod {
     pub operation_id: String,
     pub doc: Option<String>,
     pub response_type: String,
     pub path: String,
     pub method: String,
+    pub args: Vec<RustMethodArg>,
 }
 
 #[derive(Debug, Serialize)]

@@ -111,6 +111,8 @@ where
     /// Returns a greeting to the user!
     async fn greet_user(
         data: web::Data<S>,
+        body: web::Json<String>,
+        path: web::Path<GreetUserPath>,
     ) -> web::Json<String>;
 }
 
