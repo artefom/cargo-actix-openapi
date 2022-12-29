@@ -27,9 +27,9 @@ pub enum HttpMethod {
 impl Display for HttpMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            HttpMethod::Post => write!(f, "POST"),
-            HttpMethod::Get => write!(f, "GET"),
-            HttpMethod::Delete => write!(f, "DELETE"),
+            HttpMethod::Post => write!(f, "post"),
+            HttpMethod::Get => write!(f, "get"),
+            HttpMethod::Delete => write!(f, "delete"),
         }
     }
 }

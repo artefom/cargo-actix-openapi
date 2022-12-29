@@ -151,6 +151,21 @@ fn convert_errors(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::R
     defaults
 }
 
+fn convert_methods(i_ops: &Vec<models::Operation>) -> Vec<templates::RustMethod> {
+    let mut operations = Vec::new();
+
+    for op in i_ops {
+        operations.push(templates::RustMethod {
+            operation_id: op.name.clone(),
+            response_type: op.response.to_string(),
+            path: op.path.clone(),
+            method: op.method.to_string(),
+        })
+    }
+
+    operations
+}
+
 pub fn generate_api(spec: &str) -> Result<(String, String)> {
     let openapi: OpenAPI = serde_yaml::from_str(spec).expect("Could not deserialize input");
 
@@ -163,6 +178,7 @@ pub fn generate_api(spec: &str) -> Result<(String, String)> {
         enums: convert_enums(&rust_module.api.definitions),
         defaults: convert_defaults(&rust_module.api.definitions),
         errors: convert_errors(&rust_module.api.definitions),
+        methods: convert_methods(&rust_module.api.operations),
     };
 
     let serialized = templates::render_rust_module(rust_module)?;

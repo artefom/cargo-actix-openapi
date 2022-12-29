@@ -59,11 +59,20 @@ pub struct RustError {
 }
 
 #[derive(Debug, Serialize)]
+pub struct RustMethod {
+    pub operation_id: String,
+    pub response_type: String,
+    pub path: String,
+    pub method: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct RustModule {
     pub enums: Vec<RustEnum>,
     pub structs: Vec<RustStruct>,
     pub defaults: Vec<RustDefault>,
     pub errors: Vec<RustError>,
+    pub methods: Vec<RustMethod>,
 }
 
 pub fn quote_str(value: &str) -> String {

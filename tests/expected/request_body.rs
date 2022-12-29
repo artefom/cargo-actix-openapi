@@ -102,3 +102,71 @@ where
 
 // Error
 // -------------------------------
+
+// Api service
+// -------------------------------
+
+
+#[async_trait(?Send)]
+pub trait ApiService<S>
+where
+    S: Send + Sync + 'static,
+{
+    async fn greet_user(
+        data: web::Data<S>,
+    ) -> web::Json<String>;
+}
+
+
+// Run service function (+ helper functions)
+// -----------------------------------------
+
+static OPENAPI_FILE: &'static str = include_str!("static/openapi.yaml");
+static DOCS_PAGE: &'static str = include_str!("static/docs.html");
+
+/// Documentation
+#[get("/openapi.yaml")]
+async fn openapi() -> String {
+    OPENAPI_FILE.to_string()
+}
+
+/// Documentation
+#[get("/docs")]
+async fn docs() -> HttpResponse {
+    HttpResponse::build(StatusCode::OK)
+        .content_type("text/html; charset=utf-8")
+        .body(DOCS_PAGE)
+}
+
+#[get("/")]
+async fn redirect_to_docs() -> HttpResponse {
+    HttpResponse::build(StatusCode::PERMANENT_REDIRECT)
+        .append_header(("Location", "docs"))
+        .body("")
+}
+
+pub async fn run_service<T, S>(bind: &str, initial_state: S) -> Result<(), std::io::Error>
+where
+    T: ApiService<S> + 'static,
+    S: Send + Sync + 'static,
+{
+    let app_data = web::Data::new(initial_state);
+
+    HttpServer::new(move || {
+        App::new()
+            .app_data(app_data.clone())
+            .wrap(NormalizePath::trim())
+            .service(openapi)
+            .service(redirect_to_docs)
+            .service(docs)
+            .route(
+                "/hello/{user}",
+                web::post().to(T::greet_user)
+            )
+    })
+    .bind(bind)?
+    .run()
+    .await?;
+
+    Ok(())
+}
