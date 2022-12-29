@@ -62,6 +62,7 @@ pub struct RustError {
 #[derive(Debug, Serialize)]
 pub struct RustMethod {
     pub operation_id: String,
+    pub doc: Option<String>,
     pub response_type: String,
     pub path: String,
     pub method: String,

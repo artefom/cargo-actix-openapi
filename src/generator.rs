@@ -158,6 +158,7 @@ fn convert_methods(i_ops: &Vec<models::Operation>) -> Vec<templates::RustMethod>
             response_type: op.response.to_string(),
             path: op.path.clone(),
             method: op.method.to_string(),
+            doc: op.doc.clone(),
         })
     }
 

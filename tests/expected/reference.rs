@@ -108,6 +108,7 @@ pub trait ApiService<S>
 where
     S: Send + Sync + 'static,
 {
+    /// Returns a greeting to the user!
     async fn greet_user(
         data: web::Data<S>,
     ) -> web::Json<String>;

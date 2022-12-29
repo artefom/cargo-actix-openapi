@@ -295,18 +295,23 @@ pub trait ApiService<S>
 where
     S: Send + Sync + 'static,
 {
+    /// Check service health
     async fn health(
         data: web::Data<S>,
     ) -> web::Json<String>;
+    /// List quotas
     async fn quota_list(
         data: web::Data<S>,
     ) -> web::Json<Vec<String>>;
+    /// Get quota details
     async fn quota_details(
         data: web::Data<S>,
     ) -> Result<web::Json<QuotaDetails>,Detailed<QuotaDetailsResponseError>>;
+    /// Get current rate limitation state for given query
     async fn cell_test(
         data: web::Data<S>,
     ) -> Result<web::Json<CellDetails>,Detailed<CellTestResponseError>>;
+    /// Try to accomodate for one request
     async fn cell_update(
         data: web::Data<S>,
     ) -> Result<web::Json<UpdateResult>,Detailed<CellTestResponseError>>;

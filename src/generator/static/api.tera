@@ -121,6 +121,7 @@ where
     S: Send + Sync + 'static,
 {
     {%- for method in methods %}
+    {{- method.doc | comment | newline | indent(n=4) }}
     async fn {{method.operation_id}}(
         data: web::Data<S>,
     ) -> {{method.response_type}};
