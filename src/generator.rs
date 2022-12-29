@@ -155,13 +155,6 @@ fn convert_methods(i_ops: &Vec<models::Operation>) -> Vec<templates::RustMethod>
     for op in i_ops {
         let mut args = Vec::new();
 
-        if let Some(param) = &op.param_body {
-            args.push(templates::RustMethodArg {
-                name: "body".to_string(),
-                type_: param.to_string(),
-            })
-        }
-
         if let Some(param) = &op.param_path {
             args.push(templates::RustMethodArg {
                 name: "path".to_string(),
@@ -172,6 +165,13 @@ fn convert_methods(i_ops: &Vec<models::Operation>) -> Vec<templates::RustMethod>
         if let Some(param) = &op.param_query {
             args.push(templates::RustMethodArg {
                 name: "query".to_string(),
+                type_: param.to_string(),
+            })
+        }
+
+        if let Some(param) = &op.param_body {
+            args.push(templates::RustMethodArg {
+                name: "body".to_string(),
                 type_: param.to_string(),
             })
         }
