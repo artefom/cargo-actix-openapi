@@ -137,9 +137,7 @@ fn to_rust_operation(
         .request_body
         .inline(format!("{name_upper}Body"), defmaker)?;
 
-    let response = operation
-        .responses
-        .inline(format!("{name_upper}"), defmaker)?;
+    let response = operation.responses.inline(name_upper, defmaker)?;
 
     Ok(Operation {
         name: name.clone(),
