@@ -133,3 +133,168 @@ pub struct UpdateResult {
     pub allowed: bool,
     pub details: CellInfo,
 }
+
+
+// Error with details
+// -------------------------------
+
+/// Bails with detailed api error
+#[macro_export]
+macro_rules! apibail {
+    ($err:expr,$msg:expr) => {
+        return Err($crate::server::api::Detailed {
+            error: $err,
+            details: $msg.to_string(),
+        })
+    };
+}
+
+pub trait StatusCoded {
+    fn status_code(&self) -> StatusCode;
+}
+
+#[derive(Debug)]
+pub struct Detailed<E> {
+    pub error: E,
+    pub details: String,
+}
+
+impl<E: Display> Display for Detailed<E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}. Reason: {}", self.error, self.details)
+    }
+}
+
+impl<E: Display + Debug> std::error::Error for Detailed<E> {}
+
+impl<E: Display + Debug> ResponseError for Detailed<E>
+where
+    E: StatusCoded,
+{
+    fn status_code(&self) -> StatusCode {
+        self.error.status_code()
+    }
+}
+
+/// Converts some result to Result with detailed api error
+pub trait ApiErr<T, E> {
+    /// Wrap the error value with additional context.
+    fn apierr<C>(self, err: C) -> Result<T, Detailed<C>>
+    where
+        C: Display + Send + Sync + 'static;
+}
+
+impl<T, E> ApiErr<T, E> for Result<T, E>
+where
+    E: Debug + Send + Sync + 'static,
+{
+    fn apierr<C>(self, err: C) -> Result<T, Detailed<C>>
+    where
+        C: Display + Send + Sync + 'static,
+    {
+        // Not using map_err to save 2 useless frames off the captured backtrace
+        // in ext_context.
+        match self {
+            Ok(ok) => Ok(ok),
+            Err(original_error) => Err(Detailed {
+                error: err,
+                details: format!("{:?}", original_error),
+            }),
+        }
+    }
+}
+
+
+// Error
+// -------------------------------
+
+/// Status NOT_FOUND:
+/// Quota not found
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum QuotaDetailsResponseError {
+    QuotaNotFound,
+}
+
+impl Display for QuotaDetailsResponseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::QuotaNotFound => {
+                write!(f, "Quota not found")
+            },
+        }
+    }
+}
+
+impl StatusCoded for QuotaDetailsResponseError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Self::QuotaNotFound => StatusCode::NOT_FOUND,
+        }
+    }
+}
+
+/// Status BAD_REQUEST:
+/// Duplicate key in query
+/// 
+/// Status NOT_FOUND:
+/// No quotas matching given query found
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum CellTestResponseError {
+    DuplicateQueryKey,
+    NoQuotasMatchingQueryFound,
+}
+
+impl Display for CellTestResponseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DuplicateQueryKey => {
+                write!(f, "Duplicate query key")
+            },
+            Self::NoQuotasMatchingQueryFound => {
+                write!(f, "No quotas matching query found")
+            },
+        }
+    }
+}
+
+impl StatusCoded for CellTestResponseError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Self::DuplicateQueryKey => StatusCode::BAD_REQUEST,
+            Self::NoQuotasMatchingQueryFound => StatusCode::NOT_FOUND,
+        }
+    }
+}
+
+/// Status BAD_REQUEST:
+/// Duplicate key in query
+/// 
+/// Status NOT_FOUND:
+/// No quotas matching given query found
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum CellUpdateResponseError {
+    DuplicateQueryKey,
+    NoQuotasMatchingQueryFound,
+}
+
+impl Display for CellUpdateResponseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DuplicateQueryKey => {
+                write!(f, "Duplicate query key")
+            },
+            Self::NoQuotasMatchingQueryFound => {
+                write!(f, "No quotas matching query found")
+            },
+        }
+    }
+}
+
+impl StatusCoded for CellUpdateResponseError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Self::DuplicateQueryKey => StatusCode::BAD_REQUEST,
+            Self::NoQuotasMatchingQueryFound => StatusCode::NOT_FOUND,
+        }
+    }
+}

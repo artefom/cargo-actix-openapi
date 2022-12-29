@@ -8,6 +8,7 @@ static T_API: &str = include_str!("static/api.tera");
 static T_ENUM: &str = include_str!("static/enum.tera");
 static T_STRUCT: &str = include_str!("static/struct.tera");
 static T_DEFAULT: &str = include_str!("static/default.tera");
+static T_ERROR: &str = include_str!("static/error.tera");
 
 #[derive(Debug, Serialize)]
 pub struct RustEnumVariant {
@@ -44,10 +45,25 @@ pub struct RustDefault {
 }
 
 #[derive(Debug, Serialize)]
+pub struct RustErrorVariant {
+    pub title: String,
+    pub status: String,
+    pub display: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RustError {
+    pub doc: Option<String>,
+    pub title: String,
+    pub variants: Vec<RustErrorVariant>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct RustModule {
     pub enums: Vec<RustEnum>,
     pub structs: Vec<RustStruct>,
     pub defaults: Vec<RustDefault>,
+    pub errors: Vec<RustError>,
 }
 
 pub fn quote_str(value: &str) -> String {
@@ -115,6 +131,7 @@ pub fn render_rust_module(module: RustModule) -> Result<String> {
     tera.register_filter("indent", indent);
 
     tera.add_raw_template("enum.tera", T_ENUM)?;
+    tera.add_raw_template("error.tera", T_ERROR)?;
     tera.add_raw_template("struct.tera", T_STRUCT)?;
     tera.add_raw_template("default.tera", T_DEFAULT)?;
     tera.add_raw_template("api.tera", T_API)?;

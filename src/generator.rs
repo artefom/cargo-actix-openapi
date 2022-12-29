@@ -122,6 +122,35 @@ fn convert_defaults(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates:
     defaults
 }
 
+fn convert_errors(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::RustError> {
+    let mut defaults = Vec::new();
+
+    for definition in defs {
+        let err = match &definition.data {
+            models::types::DefinitionData::ApiErr(value) => value,
+            _ => continue,
+        };
+
+        let mut variants = Vec::new();
+
+        for variant in &err.variants {
+            variants.push(templates::RustErrorVariant {
+                title: variant.name.clone(),
+                status: variant.code.clone(),
+                display: variant.detail.clone(),
+            })
+        }
+
+        defaults.push(templates::RustError {
+            doc: err.doc.clone(),
+            title: definition.name.clone(),
+            variants,
+        })
+    }
+
+    defaults
+}
+
 pub fn generate_api(spec: &str) -> Result<(String, String)> {
     let openapi: OpenAPI = serde_yaml::from_str(spec).expect("Could not deserialize input");
 
@@ -133,6 +162,7 @@ pub fn generate_api(spec: &str) -> Result<(String, String)> {
         structs: convert_structs(&rust_module.api.definitions),
         enums: convert_enums(&rust_module.api.definitions),
         defaults: convert_defaults(&rust_module.api.definitions),
+        errors: convert_errors(&rust_module.api.definitions),
     };
 
     let serialized = templates::render_rust_module(rust_module)?;

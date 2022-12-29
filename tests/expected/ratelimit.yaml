@@ -66,6 +66,9 @@ api:
         type_: QuotaStats
   - name: QuotaDetailsResponseError
     data: !ApiErr
+      doc: |-
+        Status NOT_FOUND:
+        Quota not found
       variants:
       - name: QuotaNotFound
         detail: Quota not found
@@ -127,6 +130,12 @@ api:
         type_: QuotaState
   - name: CellTestResponseError
     data: !ApiErr
+      doc: |-
+        Status BAD_REQUEST:
+        Duplicate key in query
+
+        Status NOT_FOUND:
+        No quotas matching given query found
       variants:
       - name: DuplicateQueryKey
         detail: Duplicate query key
@@ -199,6 +208,12 @@ api:
         type_: CellInfo
   - name: CellUpdateResponseError
     data: !ApiErr
+      doc: |-
+        Status BAD_REQUEST:
+        Duplicate key in query
+
+        Status NOT_FOUND:
+        No quotas matching given query found
       variants:
       - name: DuplicateQueryKey
         detail: Duplicate query key

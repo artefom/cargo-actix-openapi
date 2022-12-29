@@ -10,6 +10,12 @@ api:
         type_: String
   - name: GreetUserResponseError
     data: !ApiErr
+      doc: |-
+        Status NOT_FOUND:
+        User not found
+
+        Status BAD_REQUEST:
+        Input data error
       variants:
       - name: NotFound
         detail: Not found

@@ -178,10 +178,9 @@ fn status_to_string(status: &StatusCode) -> Result<String> {
 impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
     fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
         let mut api_err_variants = Vec::new();
-
+        let mut doc_vec = Vec::new();
         for (status_code, response) in self {
             let status = status_to_string(status_code)?;
-
             let response = defmaker.ctx.deref(response)?;
             let schema = response.content.to_schema(defmaker.ctx)?;
             let schema = match &schema.schema_kind {
@@ -197,6 +196,12 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
                 bail!("Error schemas must contain enumeration")
             };
 
+            doc_vec.push(format!(
+                "Status {}:\n{}",
+                status.clone(),
+                response.description
+            ));
+
             for variant in &schema.enumeration {
                 let Some(variant) = variant else {
                     bail!("Error enumeration must not contain null")
@@ -209,10 +214,10 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
                 });
             }
         }
-
         let definition = Rc::new(Definition {
             name,
             data: DefinitionData::ApiErr(RApiErr {
+                doc: Some(doc_vec.join("\n\n")),
                 variants: api_err_variants,
             }),
         });
@@ -667,7 +672,7 @@ fn inline_obj(
             name: to_rust_identifier(prop_name, Case::Snake),
             rename: prop_name.clone(),
             default,
-            type_: type_,
+            type_,
         })
     }
 
@@ -781,14 +786,15 @@ pub struct RStruct {
 
 #[derive(Debug, Serialize)]
 pub struct ApiErrVariant {
-    name: String,   // Rust name of the variant
-    detail: String, // How it is printed
-    code: String,   // What is the code
+    pub name: String,   // Rust name of the variant
+    pub detail: String, // How it is printed
+    pub code: String,   // What is the code
 }
 
 /// Something that can serialize into api error
 #[derive(Debug, Serialize)]
 pub struct RApiErr {
+    pub doc: Option<String>,
     pub variants: Vec<ApiErrVariant>,
 }
 
