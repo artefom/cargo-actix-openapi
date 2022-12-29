@@ -8,6 +8,7 @@ api:
         rename: quota
         default: null
         type_: String
+        doc: Quota label - Unique quota identifier
   - name: Quota
     data: !Struct
       doc: Quota specification
@@ -16,10 +17,20 @@ api:
         rename: replanish_interval
         default: null
         type_: f64
+        doc: |
+          The 'weight' of a single cell in milliseconds or emission interval.
+          Maximum allowed requests per minute can be calculated as: 60 * 1000 / replanish_interval
+          Controls sustainable Cell Rate
       - name: burst_capacity
         rename: burst_capacity
         default: null
         type_: i64
+        doc: |
+          Number of sequential cells allowed in a single burst
+          A burst or clump of packets can arrive at a higher rate than determined by the emission interval
+          In case there is unused burst capacity, quota can also exceed RPM in certain time frames.
+          Burst capacity of 0 ensure that RPM is never exceeded but introduces a lot of delay.
+          Burst capacity does not affect Sustainable Cell Rate
   - name: MatchRule
     data: !Struct
       doc: null
@@ -32,10 +43,12 @@ api:
         rename: earliest_next_available
         default: null
         type_: f64
+        doc: Earliest delay in ms from now when next cell is available
       - name: remaining_burst_capacity
         rename: remaining_burst_capacity
         default: null
         type_: i64
+        doc: Current remaining burst capacity
   - name: QuotaStats
     data: !Struct
       doc: Quota statistics, purely descriptive. Not used in Rate limiting decisions.
@@ -44,6 +57,7 @@ api:
         rename: rpm
         default: null
         type_: i64
+        doc: Number of requests in last 60 seconds
   - name: QuotaDetails
     data: !Struct
       doc: Full information about quota
@@ -52,18 +66,25 @@ api:
         rename: quota
         default: null
         type_: Quota
+        doc: Quota specification
       - name: match_
         rename: match
         default: null
         type_: Vec<MatchRule>
+        doc: |
+          Collection of predicates to test agains incomming queries
+          If at least one predicate is matching the incomming query, the rate limit is applied to the request
+          Multiple rate limits can be applied to incomming request at once
       - name: state
         rename: state
         default: null
         type_: QuotaState
+        doc: State information of the quota
       - name: stats
         rename: stats
         default: null
         type_: QuotaStats
+        doc: Quota statistics, purely descriptive. Not used in Rate limiting decisions.
   - name: QuotaDetailsResponseError
     data: !ApiErr
       doc: |-
@@ -73,10 +94,6 @@ api:
       - name: QuotaNotFound
         detail: Quota not found
         code: NOT_FOUND
-  - name: MatchRule
-    data: !Struct
-      doc: null
-      properties: []
   - name: CellTestQuery
     data: !Struct
       doc: null
@@ -85,30 +102,44 @@ api:
         rename: query
         default: null
         type_: MatchRule
-  - name: Quota
-    data: !Struct
-      doc: Quota specification
-      properties:
-      - name: replanish_interval
-        rename: replanish_interval
-        default: null
-        type_: f64
-      - name: burst_capacity
-        rename: burst_capacity
-        default: null
-        type_: i64
-  - name: QuotaState
-    data: !Struct
-      doc: State information of the quota
-      properties:
-      - name: earliest_next_available
-        rename: earliest_next_available
-        default: null
-        type_: f64
-      - name: remaining_burst_capacity
-        rename: remaining_burst_capacity
-        default: null
-        type_: i64
+        doc: |
+          Query that will be matched against quotas
+
+          # Matching rules
+          ---------------
+
+          Quota matches the query if at least one of it's predicates (match section) matches the query.
+          Predicate matches query if all its key/values are present and match key/values of the request query.
+          If query key is not present in the predicate, it is disregarded.
+
+          ## Example:
+
+          given predicate:
+
+
+          `
+          {
+            'carrier': 'MEGB'
+            'endpoint': 'location'
+          }
+          `
+
+          match results on queries:
+
+
+          `?carrier=MEGB&endpoint=locations` - OK
+
+
+          `?carrier=MEGB` - No match
+
+
+          `?carrier=MEGB&endpoint=locations&sender=retailer-api` - OK
+
+
+          `?carrier=MEGB&sender=retailer-api` - No match
+
+
+          `?sender=retailer-api` - No match
   - name: CellDetails
     data: !Struct
       doc: |
@@ -120,14 +151,17 @@ api:
         rename: quotas
         default: null
         type_: Vec<String>
+        doc: Matched quotas
       - name: info
         rename: info
         default: null
         type_: Quota
+        doc: Quota specification
       - name: state
         rename: state
         default: null
         type_: QuotaState
+        doc: State information of the quota
   - name: CellTestResponseError
     data: !ApiErr
       doc: |-
@@ -143,42 +177,6 @@ api:
       - name: NoQuotasMatchingQueryFound
         detail: No quotas matching query found
         code: NOT_FOUND
-  - name: MatchRule
-    data: !Struct
-      doc: null
-      properties: []
-  - name: CellUpdateQuery
-    data: !Struct
-      doc: null
-      properties:
-      - name: query
-        rename: query
-        default: null
-        type_: MatchRule
-  - name: Quota
-    data: !Struct
-      doc: Quota specification
-      properties:
-      - name: replanish_interval
-        rename: replanish_interval
-        default: null
-        type_: f64
-      - name: burst_capacity
-        rename: burst_capacity
-        default: null
-        type_: i64
-  - name: QuotaState
-    data: !Struct
-      doc: State information of the quota
-      properties:
-      - name: earliest_next_available
-        rename: earliest_next_available
-        default: null
-        type_: f64
-      - name: remaining_burst_capacity
-        rename: remaining_burst_capacity
-        default: null
-        type_: i64
   - name: CellInfo
     data: !Struct
       doc: |
@@ -189,10 +187,12 @@ api:
         rename: info
         default: null
         type_: Quota
+        doc: Quota specification
       - name: state
         rename: state
         default: null
         type_: QuotaState
+        doc: State information of the quota
   - name: UpdateResult
     data: !Struct
       doc: |
@@ -202,25 +202,18 @@ api:
         rename: allowed
         default: null
         type_: bool
+        doc: |
+          Indicates if request was allowed
+          If request was allowed, rate limit state was already updated to accomodate
+          this request.
+          If request was rejected, rate limit was not updated
       - name: details
         rename: details
         default: null
         type_: CellInfo
-  - name: CellUpdateResponseError
-    data: !ApiErr
-      doc: |-
-        Status BAD_REQUEST:
-        Duplicate key in query
-
-        Status NOT_FOUND:
-        No quotas matching given query found
-      variants:
-      - name: DuplicateQueryKey
-        detail: Duplicate query key
-        code: BAD_REQUEST
-      - name: NoQuotasMatchingQueryFound
-        detail: No quotas matching query found
-        code: NOT_FOUND
+        doc: |
+          Information about current cell state.
+          Info and state are computed dynamically based on matched quotas.
   operations:
   - name: health
     path: /health
@@ -259,6 +252,6 @@ api:
     method: Post
     doc: Try to accomodate for one request
     param_path: null
-    param_query: web::Query<CellUpdateQuery>
+    param_query: web::Query<CellTestQuery>
     param_body: null
-    response: Result<web::Json<UpdateResult>,CellUpdateResponseError>
+    response: Result<web::Json<UpdateResult>,CellTestResponseError>

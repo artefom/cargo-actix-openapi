@@ -16,43 +16,42 @@ use async_trait::async_trait;
 // Defaults
 // -------------------------------
 
-
 // Enums
 // -------------------------------
-
 /// String enum example
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub enum GreetUserResponseStrEnum {
+pub enum GreetUserResponseStrEnum {    
     #[serde(rename="First Variant")]
-    FirstVariant,
+    FirstVariant,    
     #[serde(rename="Second variant $")]
-    SecondVariant,
+    SecondVariant,    
     #[serde(rename="!123")]
-    _123,
+    _123,    
     #[serde(rename="Hello, \"World\"")]
-    HelloWorld,
+    HelloWorld,    
     #[serde(rename="Hello, \\\"World2\\\"!")]
     HelloWorld2,
 }
-
 
 // Struct
 // -------------------------------
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserPath {
+pub struct GreetUserPath {    
+    /// The name of the user to greet.
     pub user: String,
 }
 
 /// Enum container
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserResponse {
+pub struct GreetUserResponse {    
+    /// String enum example    
     #[serde(rename="strEnum")]
-    pub str_enum: GreetUserResponseStrEnum,
+    pub str_enum: GreetUserResponseStrEnum,    
+    /// Integer enum example    
     #[serde(rename="intEnum")]
     pub int_enum: i64,
 }
-
 
 // Error with details
 // -------------------------------
@@ -123,13 +122,11 @@ where
     }
 }
 
-
 // Error
 // -------------------------------
 
 // Api service
 // -------------------------------
-
 
 #[async_trait(?Send)]
 pub trait ApiService<S>
@@ -140,7 +137,6 @@ where
         data: web::Data<S>,
     ) -> web::Json<GreetUserResponse>;
 }
-
 
 // Run service function (+ helper functions)
 // -----------------------------------------

@@ -16,19 +16,17 @@ use async_trait::async_trait;
 // Defaults
 // -------------------------------
 
-
 // Enums
 // -------------------------------
-
 
 // Struct
 // -------------------------------
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserPath {
+pub struct GreetUserPath {    
+    /// The name of the user to greet.
     pub user: String,
 }
-
 
 // Error with details
 // -------------------------------
@@ -99,13 +97,11 @@ where
     }
 }
 
-
 // Error
 // -------------------------------
 
 // Api service
 // -------------------------------
-
 
 #[async_trait(?Send)]
 pub trait ApiService<S>
@@ -116,7 +112,6 @@ where
         data: web::Data<S>,
     ) -> web::Json<String>;
 }
-
 
 // Run service function (+ helper functions)
 // -----------------------------------------

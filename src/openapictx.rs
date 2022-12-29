@@ -122,7 +122,7 @@ fn verify_namespace(expected: &str, got: &str) -> Result<()> {
 
 fn get_inner_reference<T>(ref_obj: &ReferenceOr<T>) -> Result<&T> {
     match ref_obj {
-        ReferenceOr::Reference { reference } => bail!("Reference in refernce not supported"),
+        ReferenceOr::Reference { reference: _ } => bail!("Reference in refernce not supported"),
         ReferenceOr::Item(value) => Ok(value),
     }
 }
@@ -141,7 +141,7 @@ impl Dereferencing<Parameter> for Parameter {
 
         // Just disallow nested top-level references to avoid circular dependencies
         let value = match value {
-            ReferenceOr::Reference { reference } => bail!("Reference in reference not allowed"),
+            ReferenceOr::Reference { reference: _ } => bail!("Reference in reference not allowed"),
             ReferenceOr::Item(value) => value,
         };
 
@@ -167,9 +167,9 @@ impl Dereferencing<Schema> for Schema {
 
 impl Dereferencing<PathItem> for PathItem {
     fn dereference<'a>(
-        components: &'a Components,
-        namespace: &str,
-        name: &str,
+        _components: &'a Components,
+        _namespace: &str,
+        _name: &str,
     ) -> Result<&'a PathItem> {
         bail!("Referencing path items not supported");
     }

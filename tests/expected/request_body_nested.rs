@@ -15,32 +15,29 @@ use async_trait::async_trait;
 
 // Defaults
 // -------------------------------
-
 fn default_int_1() -> i64 {
     1
 }
-
 fn default_float_0_1() -> f64 {
     0.1
 }
 
-
 // Enums
 // -------------------------------
-
 
 // Struct
 // -------------------------------
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserPath {
+pub struct GreetUserPath {    
+    /// The name of the user to greet.
     pub user: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserBodyObj {
+pub struct GreetUserBodyObj {    
     #[serde(default="default_int_1")]
-    pub foo: i64,
+    pub foo: i64,    
     #[serde(default="default_float_0_1")]
     pub bar: f64,
 }
@@ -50,7 +47,6 @@ pub struct GreetUserBody {
     pub str: String,
     pub obj: GreetUserBodyObj,
 }
-
 
 // Error with details
 // -------------------------------
@@ -121,13 +117,11 @@ where
     }
 }
 
-
 // Error
 // -------------------------------
 
 // Api service
 // -------------------------------
-
 
 #[async_trait(?Send)]
 pub trait ApiService<S>
@@ -138,7 +132,6 @@ where
         data: web::Data<S>,
     ) -> web::Json<String>;
 }
-
 
 // Run service function (+ helper functions)
 // -----------------------------------------

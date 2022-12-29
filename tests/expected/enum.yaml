@@ -8,6 +8,7 @@ api:
         rename: user
         default: null
         type_: String
+        doc: The name of the user to greet.
   - name: GreetUserResponseStrEnum
     data: !Enum
       doc: String enum example
@@ -30,10 +31,12 @@ api:
         rename: strEnum
         default: null
         type_: GreetUserResponseStrEnum
+        doc: String enum example
       - name: int_enum
         rename: intEnum
         default: null
         type_: i64
+        doc: Integer enum example
   operations:
   - name: greet_user
     path: /hello/{user}

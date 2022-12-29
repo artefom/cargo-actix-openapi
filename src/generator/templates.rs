@@ -26,6 +26,7 @@ pub struct RustEnum {
 #[derive(Debug, Serialize)]
 pub struct RustProp {
     pub title: String,
+    pub doc: Option<String>,
     pub annotation: Option<String>,
     pub type_: String,
 }
@@ -82,7 +83,7 @@ pub fn quote_str(value: &str) -> String {
     )
 }
 
-fn quote(value: &Value, args: &HashMap<String, Value>) -> tera::Result<Value> {
+fn quote(value: &Value, _args: &HashMap<String, Value>) -> tera::Result<Value> {
     let value = match value {
         Value::String(value) => value,
         _ => return Err(tera::Error::msg("Can only quote strings")),
@@ -90,25 +91,33 @@ fn quote(value: &Value, args: &HashMap<String, Value>) -> tera::Result<Value> {
     Ok(Value::String(quote_str(value)))
 }
 
-fn comment(value: &Value, args: &HashMap<String, Value>) -> tera::Result<Value> {
+fn newline(value: &Value, _args: &HashMap<String, Value>) -> tera::Result<Value> {
     let value = match value {
-        Value::Null => return Ok(Value::String("".to_string())),
+        Value::Null => return Ok(Value::Null),
+        Value::String(value) => value,
+        _ => return Err(tera::Error::msg("Can add new line to strings")),
+    };
+    Ok(Value::String(format!("\n{value}")))
+}
+
+fn comment(value: &Value, _args: &HashMap<String, Value>) -> tera::Result<Value> {
+    let value = match value {
+        Value::Null => return Ok(Value::Null),
         Value::String(value) => value,
         _ => return Err(tera::Error::msg("Maybe can only accept string or null")),
     };
 
     let mut lines = Vec::new();
 
-    for line in value.trim_end().split('\n') {
+    for line in value.lines() {
         lines.push(format!("/// {}", line));
     }
-
-    Ok(Value::String(format!("{}\n", lines.join("\n"))))
+    Ok(Value::String(lines.join("\n")))
 }
 
 fn indent(value: &Value, args: &HashMap<String, Value>) -> tera::Result<Value> {
     let value = match value {
-        Value::Null => return Ok(Value::String("".to_string())),
+        Value::Null => return Ok(Value::Null),
         Value::String(value) => value,
         _ => return Err(tera::Error::msg("Maybe can only accept string or null")),
     };
@@ -129,7 +138,15 @@ fn indent(value: &Value, args: &HashMap<String, Value>) -> tera::Result<Value> {
 
     let indent = " ".repeat(indent_num);
 
-    Ok(Value::String(format!("\n{indent}{value}")))
+    let mut indented_lines = Vec::new();
+
+    for line in value.lines() {
+        indented_lines.push(format!("{indent}{line}"));
+    }
+
+    let result = indented_lines.join("\n");
+
+    Ok(Value::String(result))
 }
 
 pub fn render_rust_module(module: RustModule) -> Result<String> {
@@ -138,6 +155,7 @@ pub fn render_rust_module(module: RustModule) -> Result<String> {
     tera.register_filter("quote", quote);
     tera.register_filter("comment", comment);
     tera.register_filter("indent", indent);
+    tera.register_filter("newline", newline);
 
     tera.add_raw_template("enum.tera", T_ENUM)?;
     tera.add_raw_template("error.tera", T_ERROR)?;

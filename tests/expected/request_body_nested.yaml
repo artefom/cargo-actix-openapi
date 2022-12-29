@@ -8,6 +8,7 @@ api:
         rename: user
         default: null
         type_: String
+        doc: The name of the user to greet.
   - name: default_int_1
     data: !DefaultProvider
       vtype: i64
@@ -24,10 +25,12 @@ api:
         rename: foo
         default: default_int_1
         type_: i64
+        doc: null
       - name: bar
         rename: bar
         default: default_float_0_1
         type_: f64
+        doc: null
   - name: GreetUserBody
     data: !Struct
       doc: null
@@ -36,10 +39,12 @@ api:
         rename: str
         default: null
         type_: String
+        doc: null
       - name: obj
         rename: obj
         default: null
         type_: GreetUserBodyObj
+        doc: null
   operations:
   - name: greet_user
     path: /hello/{user}

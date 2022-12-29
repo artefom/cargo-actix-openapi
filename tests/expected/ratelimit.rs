@@ -16,23 +16,30 @@ use async_trait::async_trait;
 // Defaults
 // -------------------------------
 
-
 // Enums
 // -------------------------------
-
 
 // Struct
 // -------------------------------
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct QuotaDetailsPath {
+pub struct QuotaDetailsPath {    
+    /// Quota label - Unique quota identifier
     pub quota: String,
 }
 
 /// Quota specification
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct Quota {
-    pub replanish_interval: f64,
+pub struct Quota {    
+    /// The 'weight' of a single cell in milliseconds or emission interval.
+    /// Maximum allowed requests per minute can be calculated as: 60 * 1000 / replanish_interval
+    /// Controls sustainable Cell Rate
+    pub replanish_interval: f64,    
+    /// Number of sequential cells allowed in a single burst
+    /// A burst or clump of packets can arrive at a higher rate than determined by the emission interval
+    /// In case there is unused burst capacity, quota can also exceed RPM in certain time frames.
+    /// Burst capacity of 0 ensure that RPM is never exceeded but introduces a lot of delay.
+    /// Burst capacity does not affect Sustainable Cell Rate
     pub burst_capacity: i64,
 }
 
@@ -42,98 +49,113 @@ pub struct MatchRule {
 
 /// State information of the quota
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct QuotaState {
-    pub earliest_next_available: f64,
+pub struct QuotaState {    
+    /// Earliest delay in ms from now when next cell is available
+    pub earliest_next_available: f64,    
+    /// Current remaining burst capacity
     pub remaining_burst_capacity: i64,
 }
 
 /// Quota statistics, purely descriptive. Not used in Rate limiting decisions.
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct QuotaStats {
+pub struct QuotaStats {    
+    /// Number of requests in last 60 seconds
     pub rpm: i64,
 }
 
 /// Full information about quota
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct QuotaDetails {
-    pub quota: Quota,
+pub struct QuotaDetails {    
+    /// Quota specification
+    pub quota: Quota,    
+    /// Collection of predicates to test agains incomming queries
+    /// If at least one predicate is matching the incomming query, the rate limit is applied to the request
+    /// Multiple rate limits can be applied to incomming request at once    
     #[serde(rename="match")]
-    pub match_: Vec<MatchRule>,
-    pub state: QuotaState,
+    pub match_: Vec<MatchRule>,    
+    /// State information of the quota
+    pub state: QuotaState,    
+    /// Quota statistics, purely descriptive. Not used in Rate limiting decisions.
     pub stats: QuotaStats,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct MatchRule {
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct CellTestQuery {
+pub struct CellTestQuery {    
+    /// Query that will be matched against quotas
+    /// 
+    /// # Matching rules
+    /// ---------------
+    /// 
+    /// Quota matches the query if at least one of it's predicates (match section) matches the query.
+    /// Predicate matches query if all its key/values are present and match key/values of the request query.
+    /// If query key is not present in the predicate, it is disregarded.
+    /// 
+    /// ## Example:
+    /// 
+    /// given predicate:
+    /// 
+    /// 
+    /// `
+    /// {
+    ///   'carrier': 'MEGB'
+    ///   'endpoint': 'location'
+    /// }
+    /// `
+    /// 
+    /// match results on queries:
+    /// 
+    /// 
+    /// `?carrier=MEGB&endpoint=locations` - OK
+    /// 
+    /// 
+    /// `?carrier=MEGB` - No match
+    /// 
+    /// 
+    /// `?carrier=MEGB&endpoint=locations&sender=retailer-api` - OK
+    /// 
+    /// 
+    /// `?carrier=MEGB&sender=retailer-api` - No match
+    /// 
+    /// 
+    /// `?sender=retailer-api` - No match
     pub query: MatchRule,
-}
-
-/// Quota specification
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct Quota {
-    pub replanish_interval: f64,
-    pub burst_capacity: i64,
-}
-
-/// State information of the quota
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct QuotaState {
-    pub earliest_next_available: f64,
-    pub remaining_burst_capacity: i64,
 }
 
 /// Information about current cell state and matched quotas.
 /// Matched quotas are computed based on query.
 /// Info and state are computed dynamically based on matched quotas.
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct CellDetails {
-    pub quotas: Vec<String>,
-    pub info: Quota,
+pub struct CellDetails {    
+    /// Matched quotas
+    pub quotas: Vec<String>,    
+    /// Quota specification
+    pub info: Quota,    
+    /// State information of the quota
     pub state: QuotaState,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct MatchRule {
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct CellUpdateQuery {
-    pub query: MatchRule,
-}
-
-/// Quota specification
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct Quota {
-    pub replanish_interval: f64,
-    pub burst_capacity: i64,
-}
-
-/// State information of the quota
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct QuotaState {
-    pub earliest_next_available: f64,
-    pub remaining_burst_capacity: i64,
 }
 
 /// Information about current cell state.
 /// Info and state are computed dynamically based on matched quotas.
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct CellInfo {
-    pub info: Quota,
+pub struct CellInfo {    
+    /// Quota specification
+    pub info: Quota,    
+    /// State information of the quota
     pub state: QuotaState,
 }
 
 /// Result of the cell update. Allowed/Denied flag + cell info
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct UpdateResult {
-    pub allowed: bool,
+pub struct UpdateResult {    
+    /// Indicates if request was allowed
+    /// If request was allowed, rate limit state was already updated to accomodate
+    /// this request.
+    /// If request was rejected, rate limit was not updated
+    pub allowed: bool,    
+    /// Information about current cell state.
+    /// Info and state are computed dynamically based on matched quotas.
     pub details: CellInfo,
 }
-
 
 // Error with details
 // -------------------------------
@@ -204,7 +226,6 @@ where
     }
 }
 
-
 // Error
 // -------------------------------
 
@@ -266,42 +287,8 @@ impl StatusCoded for CellTestResponseError {
     }
 }
 
-/// Status BAD_REQUEST:
-/// Duplicate key in query
-/// 
-/// Status NOT_FOUND:
-/// No quotas matching given query found
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub enum CellUpdateResponseError {
-    DuplicateQueryKey,
-    NoQuotasMatchingQueryFound,
-}
-
-impl Display for CellUpdateResponseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::DuplicateQueryKey => {
-                write!(f, "Duplicate query key")
-            },
-            Self::NoQuotasMatchingQueryFound => {
-                write!(f, "No quotas matching query found")
-            },
-        }
-    }
-}
-
-impl StatusCoded for CellUpdateResponseError {
-    fn status_code(&self) -> StatusCode {
-        match self {
-            Self::DuplicateQueryKey => StatusCode::BAD_REQUEST,
-            Self::NoQuotasMatchingQueryFound => StatusCode::NOT_FOUND,
-        }
-    }
-}
-
 // Api service
 // -------------------------------
-
 
 #[async_trait(?Send)]
 pub trait ApiService<S>
@@ -322,9 +309,8 @@ where
     ) -> Result<web::Json<CellDetails>,CellTestResponseError>;
     async fn cell_update(
         data: web::Data<S>,
-    ) -> Result<web::Json<UpdateResult>,CellUpdateResponseError>;
+    ) -> Result<web::Json<UpdateResult>,CellTestResponseError>;
 }
-
 
 // Run service function (+ helper functions)
 // -----------------------------------------

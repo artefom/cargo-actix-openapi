@@ -1,7 +1,8 @@
 [package]
 name = "cargo-actix-openapi"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
+description = "Generates actix-web implementation for the given openapi spec"
 
 
 [dependencies]
@@ -15,6 +16,7 @@ convert_case = "*"
 indexmap = "*"
 slug = "*"
 tera = "1"
+clap = { version = "*", features = ["derive"] }
 
 
 [dev-dependencies]

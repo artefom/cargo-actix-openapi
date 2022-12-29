@@ -1,8 +1,7 @@
-use std::{collections::HashMap, hash::Hash, rc::Rc};
+use std::rc::Rc;
 
 use indexmap::IndexMap;
 use openapiv3::OpenAPI;
-use serde::ser;
 
 use anyhow::{Context, Result};
 
@@ -10,8 +9,6 @@ mod models;
 mod templates;
 
 use models::to_rust_module;
-
-use self::models::types::to_rust_identifier;
 
 fn convert_enums(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::RustEnum> {
     let mut enums = Vec::new();
@@ -88,6 +85,7 @@ fn convert_structs(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::
 
             props.push(templates::RustProp {
                 title: prop.name.clone(),
+                doc: prop.doc.clone(),
                 annotation: render_annotation(annotation),
                 type_: prop.type_.to_string(),
             })

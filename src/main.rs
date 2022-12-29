@@ -5,43 +5,39 @@
 mod generator;
 mod openapictx;
 
-use anyhow::Result;
-use serde::{Deserialize, Serialize, Serializer};
+use std::{env, fs::read_to_string};
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub enum EnumTest {
-    #[serde(rename = "Hello, world")]
-    I1,
-    I2,
-    I3,
-}
+use anyhow::{bail, Context, Result};
+use clap::Parser;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct Test {
-    pub a: EnumTest,
-    pub b: EnumTest,
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Path to the source openapi file
+    path: String,
 }
 
 fn main() -> Result<()> {
-    generator::generate_api("Hello")?;
-    Ok(())
-}
+    let mut args: Vec<String> = env::args().collect();
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn exploration() -> Result<()> {
-        let data = EnumTest::I1;
-
-        let wrapper = Test {
-            a: data.clone(),
-            b: data.clone(),
-        };
-
-        println!("{}", serde_yaml::to_string(&wrapper)?);
-
-        Ok(())
+    // Fix when running script as cargo actix-openapi
+    if let Some(val) = args.get(1) {
+        if val == "actix-openapi" {
+            args.remove(1);
+        }
     }
+
+    let args = Args::parse_from(args);
+
+    if args.path.is_empty() {
+        bail!("Openapi path not provided (use --help to see usage)")
+    }
+
+    let file_contents = read_to_string(&args.path)
+        .with_context(|| format!("Could not open openapi spec at {}", &args.path))?;
+
+    let (_, generated) = generator::generate_api(&file_contents)?;
+    println!("{}", generated);
+    Ok(())
 }

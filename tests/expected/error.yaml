@@ -8,6 +8,7 @@ api:
         rename: user
         default: null
         type_: String
+        doc: The name of the user to greet.
   - name: GreetUserResponseError
     data: !ApiErr
       doc: |-

@@ -22,26 +22,20 @@ use async_trait::async_trait;
 // Defaults
 // -------------------------------
 {%- for model in defaults %}
-
 {{ default::render(model=model) }}
 {%- endfor %}
-
 
 // Enums
 // -------------------------------
 {%- for model in enums %}
-
 {{ enum::render(model=model) }}
 {%- endfor %}
-
 
 // Struct
 // -------------------------------
 {%- for model in structs %}
-
 {{ struct::render(model=model) }}
 {%- endfor %}
-
 
 // Error with details
 // -------------------------------
@@ -112,17 +106,14 @@ where
     }
 }
 
-
 // Error
 // -------------------------------
 {%- for model in errors %}
-
 {{ error::render(model=model) }}
 {%- endfor %}
 
 // Api service
 // -------------------------------
-
 
 #[async_trait(?Send)]
 pub trait ApiService<S>
@@ -135,7 +126,6 @@ where
     ) -> {{method.response_type}};
     {%- endfor %}
 }
-
 
 // Run service function (+ helper functions)
 // -----------------------------------------

@@ -1,9 +1,9 @@
 {%- macro render(model) -%}
-{{- model.doc | comment -}}
+{{- model.doc | comment }}
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum {{ model.title }} {
     {%- for variant in model.variants %}
-    {{- variant.annotation | indent(n=4) }}
+    {{- variant.annotation | newline | indent(n=4) }}
     {{ variant.title }},
     {%- endfor %}
 }

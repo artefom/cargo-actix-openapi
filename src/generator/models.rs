@@ -1,12 +1,12 @@
-use convert_case::{Case, Casing};
+use convert_case::Case;
 use indexmap::IndexMap;
 use openapiv3::{OpenAPI, Parameter, ReferenceOr};
 use serde::{ser::SerializeTuple, Serialize, Serializer};
-use std::{collections::HashMap, fmt::Display, ops::Deref, rc::Rc};
+use std::{fmt::Display, ops::Deref, rc::Rc};
 pub mod types;
 use anyhow::{bail, Context, Result};
 
-use crate::openapictx::{OpenApiCtx, ToSchema};
+use crate::openapictx::OpenApiCtx;
 
 use self::types::{
     to_rust_identifier, Definition, DefinitionMaker, InlineType, Inlining, MaybeInlining,
@@ -182,7 +182,7 @@ pub fn to_rust_module(spec: &OpenAPI) -> Result<RustModule> {
 
     Ok(RustModule {
         api: ApiService {
-            definitions: defmaker.store,
+            definitions: defmaker.dedup_store,
             operations,
         },
     })

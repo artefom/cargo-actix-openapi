@@ -1,7 +1,7 @@
 //! Type system that roughly maps to openapi type system
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     fmt::{Debug, Display},
     ops::Deref,
     rc::Rc,
@@ -221,7 +221,7 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
                 variants: api_err_variants,
             }),
         });
-        defmaker.store.push(definition.clone());
+        let definition = defmaker.push(definition);
         Ok(InlineType::Reference(definition))
     }
 }
@@ -239,7 +239,7 @@ fn get_success_response(
 ) -> Result<(&StatusCode, &ReferenceOr<Response>)> {
     let success_responses: Vec<(&StatusCode, &ReferenceOr<Response>)> = responses
         .iter()
-        .filter(|(status_code, x)| is_success(status_code))
+        .filter(|(status_code, _)| is_success(status_code))
         .collect();
 
     let Some((success_status, success_response)) = success_responses.first() else {
@@ -258,7 +258,7 @@ fn get_error_responses(
 ) -> IndexMap<&StatusCode, &ReferenceOr<Response>> {
     responses
         .iter()
-        .filter(|(status_code, x)| !is_success(status_code))
+        .filter(|(status_code, _)| !is_success(status_code))
         .collect()
 }
 
@@ -334,6 +334,7 @@ where
         rename: param.data().name.clone(),
         default,
         type_: inline,
+        doc: param_data.description.clone(),
     })
 }
 
@@ -363,7 +364,7 @@ where
             }),
         });
 
-        defmaker.store.push(def.clone());
+        let def = defmaker.push(def);
 
         let inner_type = Box::new(InlineType::Reference(def));
 
@@ -447,7 +448,7 @@ fn enum_inline(
             variants,
         }),
     });
-    defmaker.store.push(definition.clone());
+    let definition = defmaker.push(definition);
     Ok(InlineType::Reference(definition))
 }
 
@@ -478,7 +479,7 @@ impl Inlining for Schema {
                 }
             }
             Type::Number(_) => InlineType::Float,
-            Type::Integer(value) => InlineType::Integer,
+            Type::Integer(_) => InlineType::Integer,
             Type::Boolean {} => InlineType::Boolean,
             Type::Object(val) => {
                 let name = get_schema_name(name, &self.schema_data.title);
@@ -530,7 +531,6 @@ fn make_default_float(val: &f64) -> (String, String) {
 }
 
 fn make_default_str(val: &str) -> (String, String) {
-    let name = format!("default_str_{}", to_rust_identifier(val, Case::Snake));
     (
         format!("default_str_{}", to_rust_identifier(val, Case::Snake)),
         format!("{}.to_string()", quote_str(val)),
@@ -581,29 +581,17 @@ fn make_default_provider(
         name = format!("opt_{name}")
     }
 
-    // Look for duplicate providers and return them
-    for def in &defmaker.store {
-        let def_provider = match &def.data {
-            DefinitionData::DefaultProvider(value) => value,
-            _ => continue,
-        };
-        if def_provider.value == value && &def_provider.vtype == type_ {
-            return Ok(Some(InlineType::Reference(def.clone())));
-        }
-    }
-
     let provider = DefaultProvider {
         vtype: type_.clone(),
         value,
     };
 
-    // Or create new definition and return it
     let definition = Rc::new(Definition {
         name,
         data: DefinitionData::DefaultProvider(provider),
     });
 
-    defmaker.store.push(definition.clone());
+    let definition = defmaker.push(definition);
 
     Ok(Some(InlineType::Reference(definition)))
 }
@@ -629,7 +617,9 @@ fn validate_required_default_and_nullable(
         (false, true, _) => Ok(()), // Values are not required and have default
         (false, false, true) => Ok(()), // Value is not required, does not have default but is nullable
         (false, false, false) => {
-            bail!("Value is not required, does not have default and is nullable at the same time")
+            bail!(
+                "Value is not required, does not have default and is not nullable at the same time"
+            )
         }
     }
 }
@@ -673,6 +663,7 @@ fn inline_obj(
             rename: prop_name.clone(),
             default,
             type_,
+            doc: prop_schema.schema_data.description.clone(),
         })
     }
 
@@ -684,27 +675,37 @@ fn inline_obj(
         }),
     });
 
-    defmaker.store.push(definition.clone());
+    let definition = defmaker.push(definition);
 
     Ok(InlineType::Reference(definition))
 }
 
 pub struct DefinitionMaker<'a> {
     pub ctx: &'a OpenApiCtx<'a>,
-    pub store: Vec<Rc<Definition>>,
+    pub dedup_store: Vec<Rc<Definition>>,
 }
 
 impl<'a> DefinitionMaker<'a> {
     pub fn new(ctx: &'a OpenApiCtx<'a>) -> Self {
         DefinitionMaker {
             ctx,
-            store: Vec::new(),
+            dedup_store: Vec::new(),
         }
+    }
+
+    pub fn push(&mut self, def: Rc<Definition>) -> Rc<Definition> {
+        for existing_def in &self.dedup_store {
+            if &def == existing_def {
+                return existing_def.clone();
+            }
+        }
+        self.dedup_store.push(def.clone());
+        def
     }
 }
 
 /// Arbitrary inline type
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InlineType {
     String,
     Integer,
@@ -720,24 +721,6 @@ pub enum InlineType {
     Reference(Rc<Definition>),
     Result(Rc<InlineType>, Rc<InlineType>),
 }
-
-impl PartialEq for InlineType {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Array(l0), Self::Array(r0)) => l0 == r0,
-            (Self::Map(l0), Self::Map(r0)) => l0 == r0,
-            (Self::Json(l0), Self::Json(r0)) => l0 == r0,
-            (Self::Path(l0), Self::Path(r0)) => l0 == r0,
-            (Self::Query(l0), Self::Query(r0)) => l0 == r0,
-            (Self::Option(l0), Self::Option(r0)) => l0 == r0,
-            (Self::Reference(l0), Self::Reference(r0)) => l0.name == r0.name,
-            (Self::Result(l0, l1), Self::Result(r0, r1)) => l0 == r0 && l1 == r1,
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
-    }
-}
-
-impl Eq for InlineType {}
 
 impl Display for InlineType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -769,22 +752,23 @@ impl Serialize for InlineType {
 }
 
 /// Something that can serialize into rust struct property
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct RStructProp {
     pub name: String,
     pub rename: String,
     pub default: Option<InlineType>,
     pub type_: InlineType,
+    pub doc: Option<String>,
 }
 
 /// Something that can serialize into rust struct
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct RStruct {
     pub doc: Option<String>,
     pub properties: Vec<RStructProp>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct ApiErrVariant {
     pub name: String,   // Rust name of the variant
     pub detail: String, // How it is printed
@@ -792,31 +776,31 @@ pub struct ApiErrVariant {
 }
 
 /// Something that can serialize into api error
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct RApiErr {
     pub doc: Option<String>,
     pub variants: Vec<ApiErrVariant>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct REnumVariant {
     pub name: String,
     pub value: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct REnum {
     pub doc: Option<String>,
     pub variants: Vec<REnumVariant>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct DefaultProvider {
     pub vtype: InlineType,
     pub value: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub enum DefinitionData {
     Struct(RStruct),
     Enum(REnum),
@@ -830,9 +814,18 @@ pub struct Definition {
     pub data: DefinitionData,
 }
 
+impl PartialEq for Definition {
+    fn eq(&self, other: &Self) -> bool {
+        self.data == other.data
+    }
+}
+
+impl Eq for Definition {}
+
+/// Get name for schema
 fn get_schema_name(name: String, title: &Option<String>) -> String {
     if let Some(val) = title {
-        val.clone()
+        to_rust_identifier(val, Case::UpperCamel)
     } else {
         name
     }

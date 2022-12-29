@@ -8,6 +8,7 @@ api:
         rename: user
         default: null
         type_: String
+        doc: The name of the user to greet.
   operations:
   - name: greet_user
     path: /hello/{user}
