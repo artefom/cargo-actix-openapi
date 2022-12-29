@@ -29,16 +29,16 @@ fn default_float_0_1() -> f64 {
 // -------------------------------
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserPath {    
+pub struct GreetUserPath {
     /// The name of the user to greet.
     pub user: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserBodyObj {    
-    #[serde(default="default_int_1")]
-    pub foo: i64,    
-    #[serde(default="default_float_0_1")]
+pub struct GreetUserBodyObj {
+    #[serde(default = "default_int_1")]
+    pub foo: i64,
+    #[serde(default = "default_float_0_1")]
     pub bar: f64,
 }
 

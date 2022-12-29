@@ -20,16 +20,16 @@ use async_trait::async_trait;
 // -------------------------------
 /// String enum example
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub enum GreetUserResponseStrEnum {    
-    #[serde(rename="First Variant")]
-    FirstVariant,    
-    #[serde(rename="Second variant $")]
-    SecondVariant,    
-    #[serde(rename="!123")]
-    _123,    
-    #[serde(rename="Hello, \"World\"")]
-    HelloWorld,    
-    #[serde(rename="Hello, \\\"World2\\\"!")]
+pub enum GreetUserResponseStrEnum {
+    #[serde(rename = "First Variant")]
+    FirstVariant,
+    #[serde(rename = "Second variant $")]
+    SecondVariant,
+    #[serde(rename = "!123")]
+    _123,
+    #[serde(rename = "Hello, \"World\"")]
+    HelloWorld,
+    #[serde(rename = "Hello, \\\"World2\\\"!")]
     HelloWorld2,
 }
 
@@ -37,19 +37,19 @@ pub enum GreetUserResponseStrEnum {
 // -------------------------------
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserPath {    
+pub struct GreetUserPath {
     /// The name of the user to greet.
     pub user: String,
 }
 
 /// Enum container
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserResponse {    
-    /// String enum example    
-    #[serde(rename="strEnum")]
-    pub str_enum: GreetUserResponseStrEnum,    
-    /// Integer enum example    
-    #[serde(rename="intEnum")]
+pub struct GreetUserResponse {
+    /// String enum example
+    #[serde(rename = "strEnum")]
+    pub str_enum: GreetUserResponseStrEnum,
+    /// Integer enum example
+    #[serde(rename = "intEnum")]
     pub int_enum: i64,
 }
 

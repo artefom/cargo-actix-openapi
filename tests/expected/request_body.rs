@@ -23,7 +23,7 @@ use async_trait::async_trait;
 // -------------------------------
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserPath {    
+pub struct GreetUserPath {
     /// The name of the user to greet.
     pub user: String,
 }

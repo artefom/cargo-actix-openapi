@@ -49,7 +49,7 @@ fn render_annotation(vals: IndexMap<&str, String>) -> Option<String> {
 
     for (key, value) in vals {
         let value = templates::quote_str(&value);
-        keyvals.push(format!("{key}={value}"))
+        keyvals.push(format!("{key} = {value}"))
     }
 
     if keyvals.is_empty() {

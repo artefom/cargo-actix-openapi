@@ -284,7 +284,10 @@ impl Inlining for Responses {
 
         let res = if !error_responses.is_empty() {
             let err_inline = error_responses.inline(format!("{name}Error"), defmaker)?;
-            InlineType::Result(Rc::new(success_inline), Rc::new(err_inline))
+            InlineType::Result(
+                Box::new(success_inline),
+                Box::new(InlineType::Detailed(Box::new(err_inline))),
+            )
         } else {
             success_inline
         };
@@ -719,7 +722,8 @@ pub enum InlineType {
     Query(Box<InlineType>),  // web::Query
     Option(Box<InlineType>), // Option<InlineType>
     Reference(Rc<Definition>),
-    Result(Rc<InlineType>, Rc<InlineType>),
+    Result(Box<InlineType>, Box<InlineType>),
+    Detailed(Box<InlineType>),
 }
 
 impl Display for InlineType {
@@ -738,6 +742,7 @@ impl Display for InlineType {
             InlineType::Option(item) => write!(f, "Option<{item}>"),
             InlineType::Reference(item) => Display::fmt(&item.name, f),
             InlineType::Result(ok, err) => write!(f, "Result<{ok},{err}>"),
+            InlineType::Detailed(item) => write!(f, "Detailed<{item}>"),
         }
     }
 }

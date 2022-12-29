@@ -13,7 +13,7 @@ impl Display for {{ model.title }} {
             {%- for variant in model.variants %}
             Self::{{variant.title}} => {
                 write!(f, {{variant.display | quote}})
-            },
+            }
             {%- endfor %}
         }
     }

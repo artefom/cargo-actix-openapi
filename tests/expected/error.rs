@@ -23,7 +23,7 @@ use async_trait::async_trait;
 // -------------------------------
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct GreetUserPath {    
+pub struct GreetUserPath {
     /// The name of the user to greet.
     pub user: String,
 }
@@ -102,7 +102,7 @@ where
 
 /// Status NOT_FOUND:
 /// User not found
-/// 
+///
 /// Status BAD_REQUEST:
 /// Input data error
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -117,13 +117,13 @@ impl Display for GreetUserResponseError {
         match self {
             Self::NotFound => {
                 write!(f, "Not found")
-            },
+            }
             Self::InvalidCharacterInName => {
                 write!(f, "Invalid character in name")
-            },
+            }
             Self::NameContainsSpace => {
                 write!(f, "Name contains space")
-            },
+            }
         }
     }
 }
@@ -148,7 +148,7 @@ where
 {
     async fn greet_user(
         data: web::Data<S>,
-    ) -> Result<web::Json<String>,GreetUserResponseError>;
+    ) -> Result<web::Json<String>,Detailed<GreetUserResponseError>>;
 }
 
 // Run service function (+ helper functions)

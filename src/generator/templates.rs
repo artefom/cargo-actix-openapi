@@ -110,7 +110,11 @@ fn comment(value: &Value, _args: &HashMap<String, Value>) -> tera::Result<Value>
     let mut lines = Vec::new();
 
     for line in value.lines() {
-        lines.push(format!("/// {}", line));
+        if line.trim().is_empty() {
+            lines.push("///".to_string());
+        } else {
+            lines.push(format!("/// {}", line));
+        }
     }
     Ok(Value::String(lines.join("\n")))
 }
@@ -141,7 +145,11 @@ fn indent(value: &Value, args: &HashMap<String, Value>) -> tera::Result<Value> {
     let mut indented_lines = Vec::new();
 
     for line in value.lines() {
-        indented_lines.push(format!("{indent}{line}"));
+        if line.trim().is_empty() {
+            indented_lines.push("".to_string());
+        } else {
+            indented_lines.push(format!("{indent}{line}"));
+        }
     }
 
     let result = indented_lines.join("\n");
