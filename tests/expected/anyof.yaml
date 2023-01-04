@@ -1,0 +1,49 @@
+api:
+  definitions:
+  - name: GreetUserPath
+    data: !Struct
+      doc: null
+      properties:
+      - name: user
+        rename: user
+        default: null
+        type_: String
+        doc: The name of the user to greet.
+  - name: Variant1
+    data: !Struct
+      doc: null
+      properties:
+      - name: foo
+        rename: foo
+        default: null
+        type_: String
+        doc: null
+  - name: Variant2
+    data: !Struct
+      doc: null
+      properties:
+      - name: bar
+        rename: bar
+        default: null
+        type_: String
+        doc: null
+  - name: GreetUserBody
+    data: !Enum
+      doc: null
+      variants:
+      - name: FirstVariant
+        rename: First variant
+        data: Variant1
+      - name: SecondVariant
+        rename: Second variant
+        data: Variant2
+      discriminator: type
+  operations:
+  - name: greet_user
+    path: /hello/{user}
+    method: Post
+    doc: Returns a greeting to the user!
+    param_path: web::Path<GreetUserPath>
+    param_query: null
+    param_body: web::Json<GreetUserBody>
+    response: web::Json<String>

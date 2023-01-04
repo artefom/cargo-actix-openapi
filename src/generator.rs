@@ -24,13 +24,14 @@ fn convert_enums(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::Ru
         for variant in &enum_def.variants {
             let mut annotation = IndexMap::new();
 
-            if variant.value != variant.name {
-                annotation.insert("rename", variant.value.clone());
+            if variant.rename != variant.name {
+                annotation.insert("rename", variant.rename.clone());
             }
 
             variants.push(templates::RustEnumVariant {
                 title: variant.name.clone(),
                 annotation: render_annotation(annotation),
+                data: variant.data.as_ref().map(|x| x.to_string()),
             })
         }
 
@@ -38,6 +39,7 @@ fn convert_enums(defs: &Vec<Rc<models::types::Definition>>) -> Vec<templates::Ru
             doc: enum_def.doc.clone(),
             title: definition.name.clone(),
             variants,
+            tag: enum_def.discriminator.clone(),
         })
     }
 

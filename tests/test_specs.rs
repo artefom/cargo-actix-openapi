@@ -50,6 +50,7 @@ fn compare(got: &String, expected_path: &String) {
 #[case("enum")]
 #[case("reference")]
 #[case("ratelimit")]
+#[case("anyof")]
 fn test_specs(#[case] case_name: &str) -> Result<()> {
     let filename = format!("tests/openapi/{case_name}.yaml");
     let expected_filename = format!("tests/expected/{case_name}.rs");

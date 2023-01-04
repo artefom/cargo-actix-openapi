@@ -14,6 +14,7 @@ static T_ERROR: &str = include_str!("static/error.tera");
 pub struct RustEnumVariant {
     pub title: String,
     pub annotation: Option<String>,
+    pub data: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -21,6 +22,7 @@ pub struct RustEnum {
     pub doc: Option<String>,
     pub title: String,
     pub variants: Vec<RustEnumVariant>,
+    pub tag: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

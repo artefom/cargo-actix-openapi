@@ -1,10 +1,15 @@
 {%- macro render(model) -%}
 {{- model.doc | comment }}
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+{%- if model.tag %}
+#[serde(tag = "type")]
+{%- endif %}
 pub enum {{ model.title }} {
     {%- for variant in model.variants %}
     {{- variant.annotation | newline | indent(n=4) }}
-    {{ variant.title }},
+    {{ variant.title }}
+    {%- if variant.data -%} ({{variant.data}}) {%- endif -%}
+    ,
     {%- endfor %}
 }
 {%- endmacro render -%}

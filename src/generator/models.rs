@@ -115,15 +115,19 @@ fn to_rust_operation(
         .or(operation.description.as_ref())
         .cloned();
 
-    let params_spliited = ctx.split_parameters(global_params, &operation.parameters)?;
+    let params_spliited = ctx
+        .split_parameters(global_params, &operation.parameters)
+        .context("Could not split parameters")?;
 
     let path_params_inline = params_spliited
         .path_parameters
-        .inline(format!("{name_upper}Path"), defmaker)?;
+        .inline(format!("{name_upper}Path"), defmaker)
+        .context("Could not inline path parameters")?;
 
     let query_params_inline = params_spliited
         .query_parameters
-        .inline(format!("{name_upper}Query"), defmaker)?;
+        .inline(format!("{name_upper}Query"), defmaker)
+        .context("Could not inline query parameters")?;
 
     if !params_spliited.header_parameters.is_empty() {
         bail!("Header parameters not supported")
@@ -135,9 +139,13 @@ fn to_rust_operation(
 
     let param_body = operation
         .request_body
-        .inline(format!("{name_upper}Body"), defmaker)?;
+        .inline(format!("{name_upper}Body"), defmaker)
+        .context("Could not inline Body")?;
 
-    let response = operation.responses.inline(name_upper, defmaker)?;
+    let response = operation
+        .responses
+        .inline(name_upper, defmaker)
+        .context("Could not inline response")?;
 
     Ok(Operation {
         name: name.clone(),

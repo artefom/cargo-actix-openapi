@@ -88,7 +88,7 @@ impl ToSchema for ParameterSchemaOrContent {
 impl ToSchema for IndexMap<String, MediaType> {
     fn to_schema<'a>(&'a self, ctx: &OpenApiCtx<'a>) -> Result<&'a Schema> {
         if self.len() > 1 {
-            bail!("Content types for parameter are not supported")
+            bail!("Multiple content types for parameter are not supported")
         };
         let media = match self.get("application/json") {
             Some(value) => value,

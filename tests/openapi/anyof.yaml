@@ -1,0 +1,54 @@
+openapi: "3.0.3"
+info:
+  version: "1.0"
+  title: "Hello World API"
+paths:
+  /hello/{user}:
+    parameters:
+      - name: user
+        in: path
+        required: true
+        description: The name of the user to greet.
+        schema:
+          type: string
+    post:
+      operationId: greet_user
+      summary: Returns a greeting to the user!
+      description: Some detailed description
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  title: Variant1
+                  required:
+                    - type
+                    - foo
+                  properties:
+                    type:
+                      type: string
+                      enum: ["First variant"]
+                    foo:
+                      type: string
+                - type: object
+                  title: Variant2
+                  required:
+                    - type
+                    - bar
+                  properties:
+                    type:
+                      type: string
+                      enum: ["Second variant"]
+                    bar:
+                      type: string
+              discriminator:
+                propertyName: type
+      responses:
+        200:
+          description: Returns the greeting.
+          content:
+            application/json:
+              schema:
+                type: string

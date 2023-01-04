@@ -11,7 +11,7 @@ use convert_case::{Case, Casing};
 use indexmap::IndexMap;
 use openapiv3::{
     MediaType, ObjectType, ParameterData, ReferenceOr, RequestBody, Response, Responses, Schema,
-    SchemaKind, StatusCode, Type,
+    SchemaData, SchemaKind, StatusCode, Type,
 };
 use serde::{Serialize, Serializer};
 
@@ -441,7 +441,8 @@ fn enum_inline(
         let variant_value = (*variant).clone();
         variants.push(REnumVariant {
             name: to_rust_identifier(&variant_value, Case::UpperCamel),
-            value: variant_value,
+            rename: variant_value,
+            data: None,
         })
     }
     let definition = Rc::new(Definition {
@@ -449,6 +450,7 @@ fn enum_inline(
         data: DefinitionData::Enum(REnum {
             doc: doc.clone(),
             variants,
+            discriminator: None,
         }),
     });
     let definition = defmaker.push(definition);
@@ -466,45 +468,190 @@ fn remove_options<T>(arr: &Vec<Option<T>>) -> Result<Vec<&T>> {
     Ok(without_options)
 }
 
+fn schema_type_to_inline_type(
+    name: String,
+    defmaker: &mut DefinitionMaker,
+    schema_type: &Type,
+    schema_data: &SchemaData,
+) -> Result<InlineType> {
+    let mut type_ = match schema_type {
+        Type::String(value) => {
+            if value.enumeration.is_empty() {
+                InlineType::String
+            } else {
+                let name = get_schema_name(name, &schema_data.title);
+                let variants = remove_options(&value.enumeration)
+                    .context("Could not serialize enum variants")?;
+                enum_inline(name, defmaker, variants, &schema_data.description)?
+            }
+        }
+        Type::Number(_) => InlineType::Float,
+        Type::Integer(_) => InlineType::Integer,
+        Type::Boolean {} => InlineType::Boolean,
+        Type::Object(val) => {
+            let name = get_schema_name(name, &schema_data.title);
+            inline_obj(val, name, defmaker, &schema_data.description)?
+        }
+        Type::Array(val) => {
+            let new_inline = match &val.items {
+                Some(value) => {
+                    let deref = defmaker.ctx.deref_boxed(value)?;
+                    deref.inline(format!("{name}Item"), defmaker)?
+                }
+                None => InlineType::Any,
+            };
+            InlineType::Array(Box::new(new_inline))
+        }
+    };
+
+    if schema_data.nullable {
+        type_ = InlineType::Option(Box::new(type_))
+    };
+
+    Ok(type_)
+}
+
+fn get_discriminator_prop(
+    schema_orig: &Schema,
+    discriminator: &String,
+    defmaker: &mut DefinitionMaker,
+) -> Result<(String, Schema)> {
+    let SchemaKind::Type(ref schema) = schema_orig.schema_kind else {
+        bail!("Only object can have discriminator property")
+    };
+
+    let Type::Object(schema) = schema else {
+        bail!("Only object can have discriminator property")
+    };
+
+    let Some(discriminator_prop) = schema.properties.get(discriminator) else {
+        bail!("Could not find discriminator property")
+    };
+
+    let mut schema = schema.clone();
+    schema.properties.remove(discriminator);
+    let schema_ret = Schema {
+        schema_data: schema_orig.schema_data.clone(),
+        schema_kind: SchemaKind::Type(Type::Object(schema)),
+    };
+    let discriminator_prop = defmaker.ctx.deref_boxed(discriminator_prop)?;
+
+    let SchemaKind::Type(ref discriminator_prop) = discriminator_prop.schema_kind else {
+        bail!("Only concrete types are supported as discriminators")
+    };
+
+    let Type::String(discriminator_prop) = discriminator_prop else {
+        bail!("Discriminator property must be string")
+    };
+
+    let Some(discriminator_value) = discriminator_prop.enumeration.first() else {
+        bail!("Discriminator property must contain enumeration")
+    };
+
+    if discriminator_prop.enumeration.len() > 1 {
+        bail!("Discriminator property must have exactly one enumeration value")
+    }
+
+    let Some(discriminator_value) = discriminator_value else {
+        bail!("Discriminator property must have exactly one enumeration value that is not null")
+    };
+
+    Ok((discriminator_value.clone(), schema_ret))
+}
+
+fn discriminator_property(discriminator: &openapiv3::Discriminator) -> Result<String> {
+    if !discriminator.extensions.is_empty() {
+        bail!("Discriminator extensions not supported")
+    }
+    if !discriminator.mapping.is_empty() {
+        bail!("Discriminator mapping not supported")
+    }
+    Ok(discriminator.property_name.clone())
+}
+
+fn one_of_to_inline_type(
+    name: String,
+    defmaker: &mut DefinitionMaker,
+    schemas: Vec<&Schema>,
+    discriminator: &Option<openapiv3::Discriminator>,
+    doc: &Option<String>,
+) -> Result<InlineType> {
+    let mut variants = Vec::new();
+
+    let discriminator = match discriminator {
+        Some(discriminator) => {
+            let discriminator = discriminator_property(discriminator)?;
+            for schema in schemas {
+                let (variant_name, schema) =
+                    get_discriminator_prop(schema, &discriminator, defmaker)?;
+
+                let schema_inlined = schema
+                    .inline(
+                        to_rust_identifier(
+                            &format!("{} {}", &name, &variant_name),
+                            Case::UpperCamel,
+                        ),
+                        defmaker,
+                    )
+                    .with_context(|| format!("Could process anyOf {}", variant_name))?;
+
+                variants.push(REnumVariant {
+                    name: to_rust_identifier(&variant_name, Case::UpperCamel),
+                    rename: variant_name.clone(),
+                    data: Some(schema_inlined),
+                });
+            }
+            Some(discriminator)
+        }
+        None => {
+            bail!("oneOf without discriminator not supported")
+        }
+    };
+
+    let definition = defmaker.push(Rc::new(Definition {
+        name,
+        data: DefinitionData::Enum(REnum {
+            doc: doc.clone(),
+            variants,
+            discriminator,
+        }),
+    }));
+
+    Ok(InlineType::Reference(definition))
+}
+
 impl Inlining for Schema {
     fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
-        let SchemaKind::Type(schema_type) = &self.schema_kind else {panic!("Only type schemas are implemented")};
-
-        let mut type_ = match schema_type {
-            Type::String(value) => {
-                if value.enumeration.is_empty() {
-                    InlineType::String
-                } else {
-                    let name = get_schema_name(name, &self.schema_data.title);
-                    let variants = remove_options(&value.enumeration)
-                        .context("Could not serialize enum variants")?;
-                    enum_inline(name, defmaker, variants, &self.schema_data.description)?
+        match &self.schema_kind {
+            SchemaKind::Type(schema_type) => {
+                schema_type_to_inline_type(name, defmaker, schema_type, &self.schema_data)
+            }
+            SchemaKind::OneOf { one_of } => {
+                let mut schemas = Vec::new();
+                for schema in one_of {
+                    let schema = defmaker.ctx.deref(schema)?;
+                    schemas.push(schema);
                 }
-            }
-            Type::Number(_) => InlineType::Float,
-            Type::Integer(_) => InlineType::Integer,
-            Type::Boolean {} => InlineType::Boolean,
-            Type::Object(val) => {
-                let name = get_schema_name(name, &self.schema_data.title);
-                inline_obj(val, name, defmaker, &self.schema_data.description)?
-            }
-            Type::Array(val) => {
-                let new_inline = match &val.items {
-                    Some(value) => {
-                        let deref = defmaker.ctx.deref_boxed(value)?;
-                        deref.inline(format!("{name}Item"), defmaker)?
-                    }
-                    None => InlineType::Any,
+
+                if self.schema_data.discriminator.is_none() {
+                    bail!("Discriminator is None!")
                 };
-                InlineType::Array(Box::new(new_inline))
+
+                one_of_to_inline_type(
+                    name,
+                    defmaker,
+                    schemas,
+                    &self.schema_data.discriminator,
+                    &self.schema_data.description,
+                )
             }
-        };
-
-        if self.schema_data.nullable {
-            type_ = InlineType::Option(Box::new(type_))
-        };
-
-        Ok(type_)
+            SchemaKind::AnyOf { any_of } => bail!("Serializing 'anyOf' not supported"),
+            SchemaKind::AllOf { all_of } => bail!("Serializing 'allOf' not supported"),
+            SchemaKind::Not { not } => bail!("Serializing 'not' not supported"),
+            SchemaKind::Any(value) => {
+                bail!("Could not understand openapi object")
+            }
+        }
     }
 }
 
@@ -790,13 +937,15 @@ pub struct RApiErr {
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct REnumVariant {
     pub name: String,
-    pub value: String,
+    pub rename: String,
+    pub data: Option<InlineType>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct REnum {
     pub doc: Option<String>,
     pub variants: Vec<REnumVariant>,
+    pub discriminator: Option<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
