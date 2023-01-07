@@ -1,54 +1,84 @@
 api:
   definitions:
-  - name: GreetUserPath
-    data: !Struct
-      doc: null
-      properties:
-      - name: user
-        rename: user
-        default: null
-        type_: String
-        doc: The name of the user to greet.
-  - name: GreetUserStrEnum
-    data: !Enum
-      doc: String enum example
-      variants:
-      - name: FirstVariant
-        rename: First Variant
-        data: null
-      - name: SecondVariant
-        rename: Second variant $
-        data: null
-      - name: _123
-        rename: '!123'
-        data: null
-      - name: HelloWorld
-        rename: Hello, "World"
-        data: null
-      - name: HelloWorld2
-        rename: Hello, \"World2\"!
-        data: null
-      discriminator: null
-  - name: GreetUser
-    data: !Struct
-      doc: Enum container
-      properties:
-      - name: str_enum
-        rename: strEnum
-        default: null
-        type_: GreetUserStrEnum
+    DOCS_OPENAPI:
+      data: !StaticStr
+        path: static/openapi.yaml
+    DOCS_HTML:
+      data: !StaticStr
+        path: static/docs.html
+    openapi:
+      data: !StaticStringPath
+        data: DOCS_OPENAPI
+    docs:
+      data: !StaticHtmlPath
+        data: DOCS_HTML
+    GreetUserPath:
+      data: !Struct
+        doc: null
+        properties:
+        - name: user
+          rename: user
+          default: null
+          type_: String
+          doc: The name of the user to greet.
+    GreetUserStrEnum:
+      data: !Enum
         doc: String enum example
-      - name: int_enum
-        rename: intEnum
-        default: null
-        type_: i64
-        doc: Integer enum example
+        variants:
+        - name: FirstVariant
+          rename: First Variant
+          data: null
+        - name: SecondVariant
+          rename: Second variant $
+          data: null
+        - name: _123
+          rename: '!123'
+          data: null
+        - name: HelloWorld
+          rename: Hello, "World"
+          data: null
+        - name: HelloWorld2
+          rename: Hello, \"World2\"!
+          data: null
+        discriminator: null
+    GreetUser:
+      data: !Struct
+        doc: Enum container
+        properties:
+        - name: str_enum
+          rename: strEnum
+          default: null
+          type_: GreetUserStrEnum
+          doc: String enum example
+        - name: int_enum
+          rename: intEnum
+          default: null
+          type_: i64
+          doc: Integer enum example
   operations:
-  - name: greet_user
+    greet_user:
+      doc: Returns a greeting to the user!
+      param_path: web::Path<GreetUserPath>
+      param_query: null
+      param_body: null
+      response: web::Json<GreetUser>
+  paths:
+  - operation: greet_user
     path: /hello/{user}
     method: Get
-    doc: Returns a greeting to the user!
-    param_path: web::Path<GreetUserPath>
-    param_query: null
-    param_body: null
-    response: web::Json<GreetUser>
+  - operation: greet_user
+    path: /v1/hello/{user}
+    method: Get
+  static_services:
+  - method: Get
+    path: /openapi.yaml
+    data: openapi
+  - method: Get
+    path: /docs
+    data: docs
+  - method: Get
+    path: /v1/openapi.yaml
+    data: openapi
+  - method: Get
+    path: /v1/docs
+    data: docs

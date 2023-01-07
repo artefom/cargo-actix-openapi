@@ -4,8 +4,9 @@
 
 mod generator;
 use anyhow::Result;
+pub use generator::OpenapiWithMeta;
 mod openapictx;
 
-pub fn generate_api(spec: &str) -> Result<(String, String)> {
-    generator::generate_api(spec)
+pub fn generate_api(docs_path: &str, specs: &[OpenapiWithMeta]) -> Result<(String, String)> {
+    generator::generate_api(docs_path, specs)
 }

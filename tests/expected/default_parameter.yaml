@@ -1,80 +1,110 @@
 api:
   definitions:
-  - name: default_str_world
-    data: !DefaultProvider
-      vtype: String
-      value: '"World".to_string()'
-  - name: default_float_1
-    data: !DefaultProvider
-      vtype: f64
-      value: '1'
-  - name: default_int_1
-    data: !DefaultProvider
-      vtype: i64
-      value: '1'
-  - name: opt_default_float_1
-    data: !DefaultProvider
-      vtype: Option<f64>
-      value: Some(1)
-  - name: opt_default_int_1
-    data: !DefaultProvider
-      vtype: Option<i64>
-      value: Some(1)
-  - name: GreetUserPath
-    data: !Struct
-      doc: null
-      properties:
-      - name: user
-        rename: user
-        default: default_str_world
-        type_: String
-        doc: The name of the user to greet.
-      - name: v_1_float
-        rename: v1_float
-        default: default_float_1
-        type_: f64
+    DOCS_OPENAPI:
+      data: !StaticStr
+        path: static/openapi.yaml
+    DOCS_HTML:
+      data: !StaticStr
+        path: static/docs.html
+    openapi:
+      data: !StaticStringPath
+        data: DOCS_OPENAPI
+    docs:
+      data: !StaticHtmlPath
+        data: DOCS_HTML
+    default_str_world:
+      data: !DefaultProvider
+        vtype: String
+        value: '"World".to_string()'
+    default_float_1:
+      data: !DefaultProvider
+        vtype: f64
+        value: '1'
+    default_int_1:
+      data: !DefaultProvider
+        vtype: i64
+        value: '1'
+    opt_default_float_1:
+      data: !DefaultProvider
+        vtype: Option<f64>
+        value: Some(1)
+    opt_default_int_1:
+      data: !DefaultProvider
+        vtype: Option<i64>
+        value: Some(1)
+    GreetUserPath:
+      data: !Struct
         doc: null
-      - name: v_1_int
-        rename: v1_int
-        default: default_int_1
-        type_: i64
-        doc: null
-      - name: v_1_opt_float
-        rename: v1_opt_float
-        default: opt_default_float_1
-        type_: Option<f64>
-        doc: null
-      - name: v_1_opt_int
-        rename: v1_opt_int
-        default: opt_default_int_1
-        type_: Option<i64>
-        doc: null
-      - name: n_1
-        rename: n1
-        default: opt_default_int_1
-        type_: Option<i64>
-        doc: null
-      - name: n_2
-        rename: n2
-        default: null
-        type_: i64
-        doc: null
-      - name: n_3
-        rename: n3
-        default: null
-        type_: Option<i64>
-        doc: null
-      - name: n_4
-        rename: n4
-        default: default_int_1
-        type_: i64
-        doc: null
+        properties:
+        - name: user
+          rename: user
+          default: default_str_world
+          type_: String
+          doc: The name of the user to greet.
+        - name: v_1_float
+          rename: v1_float
+          default: default_float_1
+          type_: f64
+          doc: null
+        - name: v_1_int
+          rename: v1_int
+          default: default_int_1
+          type_: i64
+          doc: null
+        - name: v_1_opt_float
+          rename: v1_opt_float
+          default: opt_default_float_1
+          type_: Option<f64>
+          doc: null
+        - name: v_1_opt_int
+          rename: v1_opt_int
+          default: opt_default_int_1
+          type_: Option<i64>
+          doc: null
+        - name: n_1
+          rename: n1
+          default: opt_default_int_1
+          type_: Option<i64>
+          doc: null
+        - name: n_2
+          rename: n2
+          default: null
+          type_: i64
+          doc: null
+        - name: n_3
+          rename: n3
+          default: null
+          type_: Option<i64>
+          doc: null
+        - name: n_4
+          rename: n4
+          default: default_int_1
+          type_: i64
+          doc: null
   operations:
-  - name: greet_user
+    greet_user:
+      doc: Returns a greeting to the user!
+      param_path: web::Path<GreetUserPath>
+      param_query: null
+      param_body: null
+      response: web::Json<String>
+  paths:
+  - operation: greet_user
     path: /hello/{user}
     method: Get
-    doc: Returns a greeting to the user!
-    param_path: web::Path<GreetUserPath>
-    param_query: null
-    param_body: null
-    response: web::Json<String>
+  - operation: greet_user
+    path: /v1/hello/{user}
+    method: Get
+  static_services:
+  - method: Get
+    path: /openapi.yaml
+    data: openapi
+  - method: Get
+    path: /docs
+    data: docs
+  - method: Get
+    path: /v1/openapi.yaml
+    data: openapi
+  - method: Get
+    path: /v1/docs
+    data: docs

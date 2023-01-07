@@ -2,7 +2,7 @@ api:
   definitions:
     DOCS_OPENAPI:
       data: !StaticStr
-        path: static/openapi.yaml
+        path: static/openapi_v1.yaml
     DOCS_HTML:
       data: !StaticStr
         path: static/docs.html
@@ -21,49 +21,68 @@ api:
           default: null
           type_: String
           doc: The name of the user to greet.
-    Variant1:
+    GoodbyeUserPath:
       data: !Struct
         doc: null
         properties:
-        - name: foo
-          rename: foo
+        - name: user
+          rename: user
           default: null
           type_: String
           doc: null
-    Variant2:
+    DOCS_OPENAPIV2:
+      data: !StaticStr
+        path: static/openapi_v2.yaml
+    openapiV2:
+      data: !StaticStringPath
+        data: DOCS_OPENAPIV2
+    GoodbyeUserPathV2:
       data: !Struct
         doc: null
         properties:
-        - name: bar
-          rename: bar
+        - name: user
+          rename: user
           default: null
-          type_: String
+          type_: i64
           doc: null
-    GreetUserBody:
-      data: !Enum
-        doc: null
-        variants:
-        - name: FirstVariant
-          rename: First variant
-          data: Variant1
-        - name: SecondVariant
-          rename: Second variant
-          data: Variant2
-        discriminator: type
   operations:
     greet_user:
       doc: Returns a greeting to the user!
       param_path: web::Path<GreetUserPath>
       param_query: null
-      param_body: web::Json<GreetUserBody>
+      param_body: null
+      response: web::Json<String>
+    goodbye_user:
+      doc: Returns a greeting to the user!
+      param_path: web::Path<GoodbyeUserPath>
+      param_query: null
+      param_body: null
+      response: web::Json<String>
+    goodbye_user_v2:
+      doc: Returns a greeting to the user!
+      param_path: web::Path<GoodbyeUserPathV2>
+      param_query: null
+      param_body: null
       response: web::Json<String>
   paths:
   - operation: greet_user
     path: /hello/{user}
-    method: Post
+    method: Get
   - operation: greet_user
     path: /v1/hello/{user}
-    method: Post
+    method: Get
+  - operation: goodbye_user
+    path: /goodbye/{user}
+    method: Get
+  - operation: goodbye_user
+    path: /v1/goodbye/{user}
+    method: Get
+  - operation: greet_user
+    path: /v2/hello/{user}
+    method: Get
+  - operation: goodbye_user_v2
+    path: /v2/goodbye/{user}
+    method: Get
   static_services:
   - method: Get
     path: /openapi.yaml
@@ -76,4 +95,10 @@ api:
     data: openapi
   - method: Get
     path: /v1/docs
+    data: docs
+  - method: Get
+    path: /v2/openapi.yaml
+    data: openapiV2
+  - method: Get
+    path: /v2/docs
     data: docs

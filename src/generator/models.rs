@@ -1,71 +1,35 @@
 use convert_case::Case;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use openapiv3::{OpenAPI, Parameter, ReferenceOr};
-use serde::{ser::SerializeTuple, Serialize, Serializer};
-use std::{fmt::Display, ops::Deref, rc::Rc};
+use serde::Serialize;
 pub mod types;
 use anyhow::{bail, Context, Result};
 
 use crate::openapictx::OpenApiCtx;
 
 use self::types::{
-    to_rust_identifier, Definition, DefinitionMaker, InlineType, Inlining, MaybeInlining,
+    to_rust_identifier, Definition, DefinitionMaker, HttpMethod, Inlining, MaybeInlining,
+    OperationPath, RustOperation, StaticHtmlPath, StaticStr, StaticStringPath,
 };
 
 /// Reference to ApiErr definition
 #[derive(Debug, Serialize)]
 pub struct ApiErrRef(pub String);
 
-/// Http method
-#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy, Serialize)]
-pub enum HttpMethod {
-    Post,
-    Get,
-    Delete,
-}
-
-impl Display for HttpMethod {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            HttpMethod::Post => write!(f, "post"),
-            HttpMethod::Get => write!(f, "get"),
-            HttpMethod::Delete => write!(f, "delete"),
-        }
-    }
-}
-
 #[derive(Debug, Serialize)]
-pub struct Operation {
-    pub name: String,
+pub struct StaticService {
+    pub method: HttpMethod,
     pub path: String,
-    pub method: HttpMethod, // Operation method
-
-    pub doc: Option<String>,
-    pub param_path: Option<InlineType>,  // web::Path
-    pub param_query: Option<InlineType>, // web::Query
-    pub param_body: Option<InlineType>,  // web::Json
-
-    // Response
-    // -----------------------------
-    pub response: InlineType,
-}
-
-fn serialize_def_vec<S>(data: &Vec<Rc<Definition>>, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let mut seq = s.serialize_tuple(data.len())?;
-    for val in data {
-        seq.serialize_element(val.deref())?;
-    }
-    seq.end()
+    pub data: String,
 }
 
 #[derive(Debug, Serialize)]
 pub struct ApiService {
-    #[serde(serialize_with = "serialize_def_vec")]
-    pub definitions: Vec<Rc<Definition>>,
-    pub operations: Vec<Operation>,
+    pub definitions: IndexMap<String, Definition>,
+    pub operations: IndexMap<String, RustOperation>,
+    pub paths: Vec<OperationPath>,
+    /// Paths to openapi specs
+    pub static_services: Vec<StaticService>,
 }
 
 #[derive(Debug, Serialize)]
@@ -100,7 +64,8 @@ fn to_rust_operation(
     method: HttpMethod,
     operation: &openapiv3::Operation,
     global_params: &[ReferenceOr<Parameter>],
-) -> Result<Operation> {
+    version: usize,
+) -> Result<Vec<OperationPath>> {
     // Get operation name
     let Some(name) = &operation.operation_id else {
         bail!("Operation must have operation_id")
@@ -121,12 +86,12 @@ fn to_rust_operation(
 
     let path_params_inline = params_spliited
         .path_parameters
-        .inline(format!("{name_upper}Path"), defmaker)
+        .inline(format!("{name_upper}Path"), version, defmaker)
         .context("Could not inline path parameters")?;
 
     let query_params_inline = params_spliited
         .query_parameters
-        .inline(format!("{name_upper}Query"), defmaker)
+        .inline(format!("{name_upper}Query"), version, defmaker)
         .context("Could not inline query parameters")?;
 
     if !params_spliited.header_parameters.is_empty() {
@@ -139,19 +104,17 @@ fn to_rust_operation(
 
     let param_body = operation
         .request_body
-        .inline(format!("{name_upper}Body"), defmaker)
+        .inline(format!("{name_upper}Body"), version, defmaker)
         .context("Could not inline Body")?;
 
     let response = operation
         .responses
-        .inline(name_upper, defmaker)
+        .inline(name_upper, version, defmaker)
         .context("Could not inline response")?;
 
-    Ok(Operation {
-        name: name.clone(),
-        path: path.to_string(),
-        method,
-
+    let operation = RustOperation {
+        // name: name.clone(),
+        // method,
         doc,
         param_path: path_params_inline,
         param_query: query_params_inline,
@@ -160,36 +123,179 @@ fn to_rust_operation(
         // Response
         // -----------------------------
         response,
-    })
+    };
+
+    let operation = defmaker.push_operation(name.clone(), version, operation)?;
+
+    let mut paths = Vec::new();
+
+    if version == 1 {
+        // Push path without prefix for version 1
+        paths.push(OperationPath {
+            operation: operation.clone(),
+            method,
+            path: path.to_string(),
+        });
+    }
+
+    paths.push(OperationPath {
+        operation,
+        method,
+        path: format!("/v{version}{path}"),
+    });
+
+    Ok(paths)
 }
 
-pub fn to_rust_module(spec: &OpenAPI) -> Result<RustModule> {
-    let mut operations = Vec::new();
+pub fn to_openapi_site(
+    version: usize,
+    path: String,
+    path_html: String,
+    path_openapi: String,
+    defmaker: &mut DefinitionMaker,
+) -> Result<Vec<StaticService>> {
+    let mut services = Vec::new();
 
-    let ctx = OpenApiCtx::new(&spec.components);
+    let openapi_static = defmaker.push(
+        "DOCS_OPENAPI".to_string(),
+        version,
+        Definition {
+            data: types::DefinitionData::StaticStr(StaticStr { path: path_openapi }),
+        },
+    )?;
 
-    let mut defmaker = DefinitionMaker::new(&ctx);
+    let docs_static = defmaker.push(
+        "DOCS_HTML".to_string(),
+        version,
+        Definition {
+            data: types::DefinitionData::StaticStr(StaticStr { path: path_html }),
+        },
+    )?;
 
-    for (path, path_item) in spec.paths.iter() {
-        let path_item = ctx.deref(path_item)?;
-        let global_params: &Vec<ReferenceOr<Parameter>> = &path_item.parameters;
-        for (method, operation) in to_operation_map(path_item) {
-            operations.push(
-                to_rust_operation(&ctx, &mut defmaker, path, method, operation, global_params)
-                    .with_context(|| {
-                        format!(
-                            "Could not convert to rust operation at {} {}",
-                            &method, &path
-                        )
-                    })?,
-            );
+    let openapi = defmaker.push(
+        "openapi".to_string(),
+        version,
+        Definition {
+            data: types::DefinitionData::StaticStringPath(StaticStringPath {
+                data: openapi_static,
+            }),
+        },
+    )?;
+
+    services.push(StaticService {
+        method: HttpMethod::Get,
+        path: format!("{path}/openapi.yaml"),
+        data: openapi,
+    });
+
+    let docs = defmaker.push(
+        "docs".to_string(),
+        version,
+        Definition {
+            data: types::DefinitionData::StaticHtmlPath(StaticHtmlPath { data: docs_static }),
+        },
+    )?;
+
+    services.push(StaticService {
+        method: HttpMethod::Get,
+        path: format!("{path}/docs"),
+        data: docs,
+    });
+
+    Ok(services)
+}
+
+pub struct OpenApiWithPath {
+    pub spec_path: String,
+    pub spec: OpenAPI,
+}
+
+pub fn extract_major_from_version(version: &str) -> Result<usize> {
+    let mut version_elements = version.split('.');
+
+    let Some(major) = version_elements.next() else {
+        bail!("Could not understand major from string {:?}",version);
+    };
+    let major: usize = major
+        .parse()
+        .with_context(|| format!("Could not get major as usize from {:?}", version))?;
+    Ok(major)
+}
+
+pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustModule> {
+    let mut operations = IndexMap::new();
+    let mut paths = Vec::new();
+    let mut static_services = Vec::new();
+
+    let mut definitions = IndexMap::new();
+
+    let mut seen_version = IndexSet::new();
+
+    for OpenApiWithPath { spec, spec_path } in specs {
+        let ctx = OpenApiCtx::new(&spec.components);
+
+        let version =
+            extract_major_from_version(&spec.info.version).context("Could not get spec version")?;
+
+        if !seen_version.insert(version) {
+            bail!("Duplicate openapi version: {version}")
+        }
+
+        let mut defmaker = DefinitionMaker::new(&ctx, &mut definitions, &mut operations);
+
+        if version == 1 {
+            static_services.extend(to_openapi_site(
+                version,
+                "".to_string(),
+                doc_path.to_string(),
+                spec_path.clone(),
+                &mut defmaker,
+            )?);
+        }
+
+        static_services.extend(to_openapi_site(
+            version,
+            format!("/v{version}"),
+            doc_path.to_string(),
+            spec_path.clone(),
+            &mut defmaker,
+        )?);
+
+        for (path, path_item) in spec.paths.iter() {
+            let path_item = ctx.deref(path_item)?;
+            let global_params: &Vec<ReferenceOr<Parameter>> = &path_item.parameters;
+            for (method, operation) in to_operation_map(path_item) {
+                let operation_paths = to_rust_operation(
+                    &ctx,
+                    &mut defmaker,
+                    path,
+                    method,
+                    operation,
+                    global_params,
+                    version,
+                )
+                .with_context(|| {
+                    format!(
+                        "Could not convert to rust operation at {} {}",
+                        &method, &path
+                    )
+                })?;
+
+                for operation_path in operation_paths {
+                    if !paths.contains(&operation_path) {
+                        paths.push(operation_path);
+                    }
+                }
+            }
         }
     }
 
     Ok(RustModule {
         api: ApiService {
-            definitions: defmaker.dedup_store,
+            definitions,
             operations,
+            paths,
+            static_services,
         },
     })
 }

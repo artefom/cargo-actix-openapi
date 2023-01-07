@@ -3,10 +3,9 @@ use std::{
     io::Write,
 };
 
-use cargo_actix_openapi;
-
 use anyhow::Result;
 
+use cargo_actix_openapi::OpenapiWithMeta;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 
@@ -25,8 +24,8 @@ fn compare(got: &String, expected_path: &String) {
     let expected = match expected {
         Some(ref value) => value,
         None => {
-            if OVERWRITE == true {
-                save_expected(expected_path, &got).expect("Could not save expected");
+            if OVERWRITE {
+                save_expected(expected_path, got).expect("Could not save expected");
                 got
             } else {
                 panic!("Could not get expected result")
@@ -35,7 +34,7 @@ fn compare(got: &String, expected_path: &String) {
     };
 
     if expected != got && OVERWRITE {
-        save_expected(expected_path, &got).expect("Could not save expected");
+        save_expected(expected_path, got).expect("Could not save expected");
     }
 
     assert_eq!(expected, got);
@@ -56,9 +55,40 @@ fn test_specs(#[case] case_name: &str) -> Result<()> {
     let expected_filename = format!("tests/expected/{case_name}.rs");
     let expected_model = format!("tests/expected/{case_name}.yaml");
 
-    let spec = read_to_string(filename)?;
+    let mut specs = Vec::new();
 
-    let (got_model, got) = cargo_actix_openapi::generate_api(&spec)?;
+    specs.push(OpenapiWithMeta {
+        content: read_to_string(filename)?,
+        path: "static/openapi.yaml".to_string(),
+    });
+
+    let (got_model, got) = cargo_actix_openapi::generate_api("static/docs.html", &specs)?;
+
+    compare(&got, &expected_filename);
+    compare(&got_model, &expected_model);
+
+    Ok(())
+}
+
+#[rstest]
+#[case("mixed_api")]
+fn test_multi(#[case] case_name: &str) -> Result<()> {
+    let expected_filename = format!("tests/expected/{case_name}.rs");
+    let expected_model = format!("tests/expected/{case_name}.yaml");
+
+    let mut specs = Vec::new();
+
+    specs.push(OpenapiWithMeta {
+        content: read_to_string(format!("tests/openapi/{case_name}_v1.yaml"))?,
+        path: "static/openapi_v1.yaml".to_string(),
+    });
+
+    specs.push(OpenapiWithMeta {
+        content: read_to_string(format!("tests/openapi/{case_name}_v2.yaml"))?,
+        path: "static/openapi_v2.yaml".to_string(),
+    });
+
+    let (got_model, got) = cargo_actix_openapi::generate_api("static/docs.html", &specs)?;
 
     compare(&got, &expected_filename);
     compare(&got_model, &expected_model);

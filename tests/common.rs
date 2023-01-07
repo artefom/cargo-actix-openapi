@@ -39,7 +39,7 @@ pub fn load_openapi_case(name: &str) -> Result<TestCase, std::io::Error> {
 
     Ok(TestCase {
         spec: read_to_string(spec_path)?,
-        expected: expected,
+        expected,
     })
 }
 

@@ -72,9 +72,39 @@ pub struct RustMethod {
     pub operation_id: String,
     pub doc: Option<String>,
     pub response_type: String,
+    pub args: Vec<RustMethodArg>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MethodPath {
+    pub operation_id: String,
     pub path: String,
     pub method: String,
-    pub args: Vec<RustMethodArg>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StaticInclude {
+    pub title: String,
+    pub file_path: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StaticString {
+    pub title: String,
+    pub data: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StaticHtml {
+    pub title: String,
+    pub data: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StaticService {
+    pub method: String,
+    pub path: String,
+    pub target: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -84,6 +114,13 @@ pub struct RustModule {
     pub defaults: Vec<RustDefault>,
     pub errors: Vec<RustError>,
     pub methods: Vec<RustMethod>,
+    pub paths: Vec<MethodPath>,
+
+    pub static_includes: Vec<StaticInclude>,
+    pub static_strings: Vec<StaticString>,
+    pub static_htmls: Vec<StaticHtml>,
+
+    pub static_services: Vec<StaticService>,
 }
 
 pub fn quote_str(value: &str) -> String {

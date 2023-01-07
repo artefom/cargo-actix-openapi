@@ -1,257 +1,303 @@
 api:
   definitions:
-  - name: QuotaDetailsPath
-    data: !Struct
-      doc: null
-      properties:
-      - name: quota
-        rename: quota
-        default: null
-        type_: String
-        doc: Quota label - Unique quota identifier
-  - name: Quota
-    data: !Struct
-      doc: Quota specification
-      properties:
-      - name: replanish_interval
-        rename: replanish_interval
-        default: null
-        type_: f64
-        doc: |
-          The 'weight' of a single cell in milliseconds or emission interval.
-          Maximum allowed requests per minute can be calculated as: 60 * 1000 / replanish_interval
-          Controls sustainable Cell Rate
-      - name: burst_capacity
-        rename: burst_capacity
-        default: null
-        type_: i64
-        doc: |
-          Number of sequential cells allowed in a single burst
-          A burst or clump of packets can arrive at a higher rate than determined by the emission interval
-          In case there is unused burst capacity, quota can also exceed RPM in certain time frames.
-          Burst capacity of 0 ensure that RPM is never exceeded but introduces a lot of delay.
-          Burst capacity does not affect Sustainable Cell Rate
-  - name: MatchRule
-    data: !Struct
-      doc: null
-      properties: []
-  - name: QuotaState
-    data: !Struct
-      doc: State information of the quota
-      properties:
-      - name: earliest_next_available
-        rename: earliest_next_available
-        default: null
-        type_: f64
-        doc: Earliest delay in ms from now when next cell is available
-      - name: remaining_burst_capacity
-        rename: remaining_burst_capacity
-        default: null
-        type_: i64
-        doc: Current remaining burst capacity
-  - name: QuotaStats
-    data: !Struct
-      doc: Quota statistics, purely descriptive. Not used in Rate limiting decisions.
-      properties:
-      - name: rpm
-        rename: rpm
-        default: null
-        type_: i64
-        doc: Number of requests in last 60 seconds
-  - name: QuotaDetails
-    data: !Struct
-      doc: Full information about quota
-      properties:
-      - name: quota
-        rename: quota
-        default: null
-        type_: Quota
+    DOCS_OPENAPI:
+      data: !StaticStr
+        path: static/openapi.yaml
+    DOCS_HTML:
+      data: !StaticStr
+        path: static/docs.html
+    openapi:
+      data: !StaticStringPath
+        data: DOCS_OPENAPI
+    docs:
+      data: !StaticHtmlPath
+        data: DOCS_HTML
+    QuotaDetailsPath:
+      data: !Struct
+        doc: null
+        properties:
+        - name: quota
+          rename: quota
+          default: null
+          type_: String
+          doc: Quota label - Unique quota identifier
+    Quota:
+      data: !Struct
         doc: Quota specification
-      - name: match_
-        rename: match
-        default: null
-        type_: Vec<MatchRule>
-        doc: |
-          Collection of predicates to test agains incomming queries
-          If at least one predicate is matching the incomming query, the rate limit is applied to the request
-          Multiple rate limits can be applied to incomming request at once
-      - name: state
-        rename: state
-        default: null
-        type_: QuotaState
+        properties:
+        - name: replanish_interval
+          rename: replanish_interval
+          default: null
+          type_: f64
+          doc: |
+            The 'weight' of a single cell in milliseconds or emission interval.
+            Maximum allowed requests per minute can be calculated as: 60 * 1000 / replanish_interval
+            Controls sustainable Cell Rate
+        - name: burst_capacity
+          rename: burst_capacity
+          default: null
+          type_: i64
+          doc: |
+            Number of sequential cells allowed in a single burst
+            A burst or clump of packets can arrive at a higher rate than determined by the emission interval
+            In case there is unused burst capacity, quota can also exceed RPM in certain time frames.
+            Burst capacity of 0 ensure that RPM is never exceeded but introduces a lot of delay.
+            Burst capacity does not affect Sustainable Cell Rate
+    MatchRule:
+      data: !Struct
+        doc: null
+        properties: []
+    QuotaState:
+      data: !Struct
         doc: State information of the quota
-      - name: stats
-        rename: stats
-        default: null
-        type_: QuotaStats
+        properties:
+        - name: earliest_next_available
+          rename: earliest_next_available
+          default: null
+          type_: f64
+          doc: Earliest delay in ms from now when next cell is available
+        - name: remaining_burst_capacity
+          rename: remaining_burst_capacity
+          default: null
+          type_: i64
+          doc: Current remaining burst capacity
+    QuotaStats:
+      data: !Struct
         doc: Quota statistics, purely descriptive. Not used in Rate limiting decisions.
-  - name: QuotaDetailsError
-    data: !ApiErr
-      doc: |-
-        Status NOT_FOUND:
-        Quota not found
-      variants:
-      - name: QuotaNotFound
-        detail: Quota not found
-        code: NOT_FOUND
-  - name: CellTestQuery
-    data: !Struct
-      doc: null
-      properties:
-      - name: query
-        rename: query
-        default: null
-        type_: MatchRule
+        properties:
+        - name: rpm
+          rename: rpm
+          default: null
+          type_: i64
+          doc: Number of requests in last 60 seconds
+    QuotaDetails:
+      data: !Struct
+        doc: Full information about quota
+        properties:
+        - name: quota
+          rename: quota
+          default: null
+          type_: Quota
+          doc: Quota specification
+        - name: match_
+          rename: match
+          default: null
+          type_: Vec<MatchRule>
+          doc: |
+            Collection of predicates to test agains incomming queries
+            If at least one predicate is matching the incomming query, the rate limit is applied to the request
+            Multiple rate limits can be applied to incomming request at once
+        - name: state
+          rename: state
+          default: null
+          type_: QuotaState
+          doc: State information of the quota
+        - name: stats
+          rename: stats
+          default: null
+          type_: QuotaStats
+          doc: Quota statistics, purely descriptive. Not used in Rate limiting decisions.
+    QuotaDetailsError:
+      data: !ApiErr
+        doc: |-
+          Status NOT_FOUND:
+          Quota not found
+        variants:
+        - name: QuotaNotFound
+          detail: Quota not found
+          code: NOT_FOUND
+    CellTestQuery:
+      data: !Struct
+        doc: null
+        properties:
+        - name: query
+          rename: query
+          default: null
+          type_: MatchRule
+          doc: |
+            Query that will be matched against quotas
+
+            # Matching rules
+            ---------------
+
+            Quota matches the query if at least one of it's predicates (match section) matches the query.
+            Predicate matches query if all its key/values are present and match key/values of the request query.
+            If query key is not present in the predicate, it is disregarded.
+
+            ## Example:
+
+            given predicate:
+
+
+            `
+            {
+              'carrier': 'MEGB'
+              'endpoint': 'location'
+            }
+            `
+
+            match results on queries:
+
+
+            `?carrier=MEGB&endpoint=locations` - OK
+
+
+            `?carrier=MEGB` - No match
+
+
+            `?carrier=MEGB&endpoint=locations&sender=retailer-api` - OK
+
+
+            `?carrier=MEGB&sender=retailer-api` - No match
+
+
+            `?sender=retailer-api` - No match
+    CellDetails:
+      data: !Struct
         doc: |
-          Query that will be matched against quotas
+          Information about current cell state and matched quotas.
+          Matched quotas are computed based on query.
+          Info and state are computed dynamically based on matched quotas.
+        properties:
+        - name: quotas
+          rename: quotas
+          default: null
+          type_: Vec<String>
+          doc: Matched quotas
+        - name: info
+          rename: info
+          default: null
+          type_: Quota
+          doc: Quota specification
+        - name: state
+          rename: state
+          default: null
+          type_: QuotaState
+          doc: State information of the quota
+    CellTestError:
+      data: !ApiErr
+        doc: |-
+          Status BAD_REQUEST:
+          Duplicate key in query
 
-          # Matching rules
-          ---------------
-
-          Quota matches the query if at least one of it's predicates (match section) matches the query.
-          Predicate matches query if all its key/values are present and match key/values of the request query.
-          If query key is not present in the predicate, it is disregarded.
-
-          ## Example:
-
-          given predicate:
-
-
-          `
-          {
-            'carrier': 'MEGB'
-            'endpoint': 'location'
-          }
-          `
-
-          match results on queries:
-
-
-          `?carrier=MEGB&endpoint=locations` - OK
-
-
-          `?carrier=MEGB` - No match
-
-
-          `?carrier=MEGB&endpoint=locations&sender=retailer-api` - OK
-
-
-          `?carrier=MEGB&sender=retailer-api` - No match
-
-
-          `?sender=retailer-api` - No match
-  - name: CellDetails
-    data: !Struct
-      doc: |
-        Information about current cell state and matched quotas.
-        Matched quotas are computed based on query.
-        Info and state are computed dynamically based on matched quotas.
-      properties:
-      - name: quotas
-        rename: quotas
-        default: null
-        type_: Vec<String>
-        doc: Matched quotas
-      - name: info
-        rename: info
-        default: null
-        type_: Quota
-        doc: Quota specification
-      - name: state
-        rename: state
-        default: null
-        type_: QuotaState
-        doc: State information of the quota
-  - name: CellTestError
-    data: !ApiErr
-      doc: |-
-        Status BAD_REQUEST:
-        Duplicate key in query
-
-        Status NOT_FOUND:
-        No quotas matching given query found
-      variants:
-      - name: DuplicateQueryKey
-        detail: Duplicate query key
-        code: BAD_REQUEST
-      - name: NoQuotasMatchingQueryFound
-        detail: No quotas matching query found
-        code: NOT_FOUND
-  - name: CellInfo
-    data: !Struct
-      doc: |
-        Information about current cell state.
-        Info and state are computed dynamically based on matched quotas.
-      properties:
-      - name: info
-        rename: info
-        default: null
-        type_: Quota
-        doc: Quota specification
-      - name: state
-        rename: state
-        default: null
-        type_: QuotaState
-        doc: State information of the quota
-  - name: UpdateResult
-    data: !Struct
-      doc: |
-        Result of the cell update. Allowed/Denied flag + cell info
-      properties:
-      - name: allowed
-        rename: allowed
-        default: null
-        type_: bool
-        doc: |
-          Indicates if request was allowed
-          If request was allowed, rate limit state was already updated to accomodate
-          this request.
-          If request was rejected, rate limit was not updated
-      - name: details
-        rename: details
-        default: null
-        type_: CellInfo
+          Status NOT_FOUND:
+          No quotas matching given query found
+        variants:
+        - name: DuplicateQueryKey
+          detail: Duplicate query key
+          code: BAD_REQUEST
+        - name: NoQuotasMatchingQueryFound
+          detail: No quotas matching query found
+          code: NOT_FOUND
+    CellInfo:
+      data: !Struct
         doc: |
           Information about current cell state.
           Info and state are computed dynamically based on matched quotas.
+        properties:
+        - name: info
+          rename: info
+          default: null
+          type_: Quota
+          doc: Quota specification
+        - name: state
+          rename: state
+          default: null
+          type_: QuotaState
+          doc: State information of the quota
+    UpdateResult:
+      data: !Struct
+        doc: |
+          Result of the cell update. Allowed/Denied flag + cell info
+        properties:
+        - name: allowed
+          rename: allowed
+          default: null
+          type_: bool
+          doc: |
+            Indicates if request was allowed
+            If request was allowed, rate limit state was already updated to accomodate
+            this request.
+            If request was rejected, rate limit was not updated
+        - name: details
+          rename: details
+          default: null
+          type_: CellInfo
+          doc: |
+            Information about current cell state.
+            Info and state are computed dynamically based on matched quotas.
   operations:
-  - name: health
+    health:
+      doc: Check service health
+      param_path: null
+      param_query: null
+      param_body: null
+      response: web::Json<String>
+    quota_list:
+      doc: List quotas
+      param_path: null
+      param_query: null
+      param_body: null
+      response: web::Json<Vec<String>>
+    quota_details:
+      doc: Get quota details
+      param_path: web::Path<QuotaDetailsPath>
+      param_query: null
+      param_body: null
+      response: Result<web::Json<QuotaDetails>,Detailed<QuotaDetailsError>>
+    cell_test:
+      doc: Get current rate limitation state for given query
+      param_path: null
+      param_query: web::Query<CellTestQuery>
+      param_body: null
+      response: Result<web::Json<CellDetails>,Detailed<CellTestError>>
+    cell_update:
+      doc: Try to accomodate for one request
+      param_path: null
+      param_query: web::Query<CellTestQuery>
+      param_body: null
+      response: Result<web::Json<UpdateResult>,Detailed<CellTestError>>
+  paths:
+  - operation: health
     path: /health
     method: Get
-    doc: Check service health
-    param_path: null
-    param_query: null
-    param_body: null
-    response: web::Json<String>
-  - name: quota_list
+  - operation: health
+    path: /v1/health
+    method: Get
+  - operation: quota_list
     path: /quota
     method: Get
-    doc: List quotas
-    param_path: null
-    param_query: null
-    param_body: null
-    response: web::Json<Vec<String>>
-  - name: quota_details
+  - operation: quota_list
+    path: /v1/quota
+    method: Get
+  - operation: quota_details
     path: /quota/{quota}
     method: Get
-    doc: Get quota details
-    param_path: web::Path<QuotaDetailsPath>
-    param_query: null
-    param_body: null
-    response: Result<web::Json<QuotaDetails>,Detailed<QuotaDetailsError>>
-  - name: cell_test
+  - operation: quota_details
+    path: /v1/quota/{quota}
+    method: Get
+  - operation: cell_test
     path: /cell/test
     method: Get
-    doc: Get current rate limitation state for given query
-    param_path: null
-    param_query: web::Query<CellTestQuery>
-    param_body: null
-    response: Result<web::Json<CellDetails>,Detailed<CellTestError>>
-  - name: cell_update
+  - operation: cell_test
+    path: /v1/cell/test
+    method: Get
+  - operation: cell_update
     path: /cell/update
     method: Post
-    doc: Try to accomodate for one request
-    param_path: null
-    param_query: web::Query<CellTestQuery>
-    param_body: null
-    response: Result<web::Json<UpdateResult>,Detailed<CellTestError>>
+  - operation: cell_update
+    path: /v1/cell/update
+    method: Post
+  static_services:
+  - method: Get
+    path: /openapi.yaml
+    data: openapi
+  - method: Get
+    path: /docs
+    data: docs
+  - method: Get
+    path: /v1/openapi.yaml
+    data: openapi
+  - method: Get
+    path: /v1/docs
+    data: docs

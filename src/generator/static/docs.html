@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link
+      type="text/css"
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui.css"
+    />
+    <link
+      rel="shortcut icon"
+      href="https://fastapi.tiangolo.com/img/favicon.png"
+    />
+    <title>OpenAPI</title>
+
+    <style>
+      .swagger-ui .info .title small.version-stamp {
+        background-color: #bc2a0c;
+      }
+
+      .swagger-ui .info a {
+        color: #d89000;
+      }
+
+      /* ----------- GET ----------- */
+
+      .swagger-ui .opblock.opblock-get .opblock-summary-method {
+        background: #9a542e;
+      }
+
+      .swagger-ui .opblock.opblock-get {
+        background: #9a542e1a;
+        border-color: #9a542e;
+      }
+
+      .swagger-ui .opblock.opblock-get .opblock-summary {
+        border-color: #9a542e;
+      }
+
+      .swagger-ui
+        .opblock.opblock-get
+        .tab-header
+        .tab-item.active
+        h4
+        span:after {
+        background: #9a542e;
+      }
+
+      /* ----------- POST ----------- */
+
+      .swagger-ui .opblock.opblock-post .opblock-summary-method {
+        background: #d89000;
+      }
+
+      .swagger-ui .opblock.opblock-post {
+        background: #d890001a;
+        border-color: #d89000;
+      }
+
+      .swagger-ui .opblock.opblock-post .opblock-summary {
+        border-color: #d89000;
+      }
+
+      .swagger-ui
+        .opblock.opblock-post
+        .tab-header
+        .tab-item.active
+        h4
+        span:after {
+        background: #d89000;
+      }
+
+      /* ----------- DELETE ----------- */
+
+      .swagger-ui .opblock.opblock-delete .opblock-summary-method {
+        background: #bc2a0c;
+      }
+
+      .swagger-ui .opblock.opblock-delete {
+        background: #bc2a0c1a;
+        border-color: #bc2a0c;
+      }
+
+      .swagger-ui .opblock.opblock-delete .opblock-summary {
+        border-color: #bc2a0c;
+      }
+
+      .swagger-ui
+        .opblock.opblock-delete
+        .tab-header
+        .tab-item.active
+        h4
+        span:after {
+        background: #bc2a0c;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js"></script>
+    <!-- `SwaggerUIBundle` is now available on the page -->
+    <script>
+      const ui = SwaggerUIBundle({
+        url: "./openapi.yaml",
+        dom_id: "#swagger-ui",
+        layout: "BaseLayout",
+        deepLinking: true,
+        showExtensions: true,
+        showCommonExtensions: true,
+        oauth2RedirectUrl: window.location.origin + "/docs/oauth2-redirect",
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIBundle.SwaggerUIStandalonePreset,
+        ],
+      });
+    </script>
+  </body>
+</html>

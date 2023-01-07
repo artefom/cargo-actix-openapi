@@ -118,22 +118,15 @@ where
 
 // Run service function (+ helper functions)
 // -----------------------------------------
-
-static OPENAPI_FILE: &'static str = include_str!("static/openapi.yaml");
-static DOCS_PAGE: &'static str = include_str!("static/docs.html");
-
-/// Documentation
-#[get("/openapi.yaml")]
+static DOCS_OPENAPI: &str = include_str!("static/openapi.yaml");
+static DOCS_HTML: &str = include_str!("static/docs.html");
 async fn openapi() -> String {
-    OPENAPI_FILE.to_string()
+    DOCS_OPENAPI.to_string()
 }
-
-/// Documentation
-#[get("/docs")]
 async fn docs() -> HttpResponse {
     HttpResponse::build(StatusCode::OK)
         .content_type("text/html; charset=utf-8")
-        .body(DOCS_PAGE)
+        .body(DOCS_HTML)
 }
 
 #[get("/")]
@@ -154,11 +147,29 @@ where
         App::new()
             .app_data(app_data.clone())
             .wrap(NormalizePath::trim())
-            .service(openapi)
             .service(redirect_to_docs)
-            .service(docs)
+            .route(
+                "/openapi.yaml",
+                web::get().to(openapi)
+            )
+            .route(
+                "/docs",
+                web::get().to(docs)
+            )
+            .route(
+                "/v1/openapi.yaml",
+                web::get().to(openapi)
+            )
+            .route(
+                "/v1/docs",
+                web::get().to(docs)
+            )
             .route(
                 "/hello/{user}",
+                web::post().to(T::greet_user)
+            )
+            .route(
+                "/v1/hello/{user}",
                 web::post().to(T::greet_user)
             )
     })

@@ -4,7 +4,6 @@ use std::{
     collections::HashSet,
     fmt::{Debug, Display},
     ops::Deref,
-    rc::Rc,
 };
 
 use convert_case::{Case, Casing};
@@ -54,16 +53,26 @@ impl<'a> GenericParameter for CookieParameter<'a> {
 }
 
 pub trait MaybeInlining {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<Option<InlineType>>;
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<Option<InlineType>>;
 }
 
 impl<T> MaybeInlining for Option<T>
 where
     T: Inlining,
 {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<Option<InlineType>> {
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<Option<InlineType>> {
         match self {
-            Some(value) => Ok(Some(value.inline(name, defmaker)?)),
+            Some(value) => Ok(Some(value.inline(name, version, defmaker)?)),
             None => Ok(None),
         }
     }
@@ -73,36 +82,63 @@ impl<T> MaybeInlining for ReferenceOr<T>
 where
     T: MaybeInlining + Dereferencing<T>,
 {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<Option<InlineType>> {
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<Option<InlineType>> {
         let deref = defmaker.ctx.deref(self)?;
-        deref.inline(name, defmaker)
+        deref.inline(name, version, defmaker)
     }
 }
 
 pub trait Inlining {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType>;
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<InlineType>;
 }
 
 impl<T> Inlining for ReferenceOr<T>
 where
     T: Inlining + Dereferencing<T>,
 {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<InlineType> {
         let deref = defmaker.ctx.deref(self)?;
-        deref.inline(name, defmaker)
+        deref.inline(name, version, defmaker)
     }
 }
 
 impl Inlining for IndexMap<String, MediaType> {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<InlineType> {
         let schema = self.to_schema(defmaker.ctx)?;
-        Ok(InlineType::Json(Box::new(schema.inline(name, defmaker)?)))
+        Ok(InlineType::Json(Box::new(
+            schema.inline(name, version, defmaker)?,
+        )))
     }
 }
 
 impl Inlining for RequestBody {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
-        let inner = self.content.inline(name, defmaker)?;
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<InlineType> {
+        let inner = self.content.inline(name, version, defmaker)?;
         if self.required {
             Ok(inner)
         } else {
@@ -176,7 +212,12 @@ fn status_to_string(status: &StatusCode) -> Result<String> {
 }
 
 impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<InlineType> {
         let mut api_err_variants = Vec::new();
         let mut doc_vec = Vec::new();
         for (status_code, response) in self {
@@ -214,14 +255,13 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
                 });
             }
         }
-        let definition = Rc::new(Definition {
-            name,
+        let definition = Definition {
             data: DefinitionData::ApiErr(RApiErr {
                 doc: Some(doc_vec.join("\n\n")),
                 variants: api_err_variants,
             }),
-        });
-        let definition = defmaker.push(definition);
+        };
+        let definition = defmaker.push(name, version, definition)?;
         Ok(InlineType::Reference(definition))
     }
 }
@@ -263,13 +303,23 @@ fn get_error_responses(
 }
 
 impl Inlining for Response {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
-        self.content.inline(name, defmaker)
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<InlineType> {
+        self.content.inline(name, version, defmaker)
     }
 }
 
 impl Inlining for Responses {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<InlineType> {
         // Render success response
         let (success_response_code, success_response) = get_success_response(&self.responses)?;
 
@@ -277,13 +327,13 @@ impl Inlining for Responses {
             bail!("Only success code '200' supported")
         }
 
-        let success_inline = success_response.inline(name.clone(), defmaker)?;
+        let success_inline = success_response.inline(name.clone(), version, defmaker)?;
 
         // Render error responses
         let error_responses = get_error_responses(&self.responses);
 
         let res = if !error_responses.is_empty() {
-            let err_inline = error_responses.inline(format!("{name}Error"), defmaker)?;
+            let err_inline = error_responses.inline(format!("{name}Error"), version, defmaker)?;
             InlineType::Result(
                 Box::new(success_inline),
                 Box::new(InlineType::Detailed(Box::new(err_inline))),
@@ -297,14 +347,20 @@ impl Inlining for Responses {
 }
 
 impl Inlining for ParameterData {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<InlineType> {
         let schema = self.format.to_schema(defmaker.ctx)?;
-        schema.inline(name, defmaker)
+        schema.inline(name, version, defmaker)
     }
 }
 
 fn render_parameter<T>(
     name: &String,
+    version: usize,
     param: &T,
     defmaker: &mut DefinitionMaker,
 ) -> Result<RStructProp>
@@ -317,14 +373,19 @@ where
         name,
         to_rust_identifier(&param_data.name, Case::UpperCamel)
     );
-    let inline = param.data().inline(inline_name, defmaker)?;
+    let inline = param.data().inline(inline_name, version, defmaker)?;
 
     let parameter_schema = param_data
         .format
         .to_schema(defmaker.ctx)
         .with_context(|| format!("Could not get parameter schema for {}", &param_data.name))?;
 
-    let default = make_default_provider(&parameter_schema.schema_data.default, &inline, defmaker)?;
+    let default = make_default_provider(
+        version,
+        &parameter_schema.schema_data.default,
+        &inline,
+        defmaker,
+    )?;
 
     validate_required_default_and_nullable(
         param_data.required,
@@ -346,28 +407,32 @@ where
     T: GenericParameter,
     Vec<T>: ParameterStore,
 {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<Option<InlineType>> {
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<Option<InlineType>> {
         if self.is_empty() {
             return Ok(None);
         }
         let mut properties = Vec::new();
 
         for param in self {
-            properties
-                .push(render_parameter(&name, param, defmaker).with_context(|| {
-                    format!("Could not render parameter {}", param.data().name)
-                })?);
+            properties.push(
+                render_parameter(&name, version, param, defmaker)
+                    .with_context(|| format!("Could not render parameter {}", param.data().name))?,
+            );
         }
 
-        let def = Rc::new(Definition {
-            name,
+        let def = Definition {
             data: DefinitionData::Struct(RStruct {
                 doc: None,
                 properties,
             }),
-        });
+        };
 
-        let def = defmaker.push(def);
+        let def = defmaker.push(name, version, def)?;
 
         let inner_type = Box::new(InlineType::Reference(def));
 
@@ -432,6 +497,7 @@ pub fn to_rust_identifier(val: &str, case: Case) -> String {
 
 fn enum_inline(
     name: String,
+    version: usize,
     defmaker: &mut DefinitionMaker,
     data: Vec<&String>,
     doc: &Option<String>,
@@ -445,15 +511,14 @@ fn enum_inline(
             data: None,
         })
     }
-    let definition = Rc::new(Definition {
-        name,
+    let definition = Definition {
         data: DefinitionData::Enum(REnum {
             doc: doc.clone(),
             variants,
             discriminator: None,
         }),
-    });
-    let definition = defmaker.push(definition);
+    };
+    let definition = defmaker.push(name, version, definition)?;
     Ok(InlineType::Reference(definition))
 }
 
@@ -470,6 +535,7 @@ fn remove_options<T>(arr: &Vec<Option<T>>) -> Result<Vec<&T>> {
 
 fn schema_type_to_inline_type(
     name: String,
+    version: usize,
     defmaker: &mut DefinitionMaker,
     schema_type: &Type,
     schema_data: &SchemaData,
@@ -482,7 +548,7 @@ fn schema_type_to_inline_type(
                 let name = get_schema_name(name, &schema_data.title);
                 let variants = remove_options(&value.enumeration)
                     .context("Could not serialize enum variants")?;
-                enum_inline(name, defmaker, variants, &schema_data.description)?
+                enum_inline(name, version, defmaker, variants, &schema_data.description)?
             }
         }
         Type::Number(_) => InlineType::Float,
@@ -490,13 +556,13 @@ fn schema_type_to_inline_type(
         Type::Boolean {} => InlineType::Boolean,
         Type::Object(val) => {
             let name = get_schema_name(name, &schema_data.title);
-            inline_obj(val, name, defmaker, &schema_data.description)?
+            inline_obj(val, name, version, defmaker, &schema_data.description)?
         }
         Type::Array(val) => {
             let new_inline = match &val.items {
                 Some(value) => {
                     let deref = defmaker.ctx.deref_boxed(value)?;
-                    deref.inline(format!("{name}Item"), defmaker)?
+                    deref.inline(format!("{name}Item"), version, defmaker)?
                 }
                 None => InlineType::Any,
             };
@@ -571,6 +637,7 @@ fn discriminator_property(discriminator: &openapiv3::Discriminator) -> Result<St
 
 fn one_of_to_inline_type(
     name: String,
+    version: usize,
     defmaker: &mut DefinitionMaker,
     schemas: Vec<&Schema>,
     discriminator: &Option<openapiv3::Discriminator>,
@@ -591,6 +658,7 @@ fn one_of_to_inline_type(
                             &format!("{} {}", &name, &variant_name),
                             Case::UpperCamel,
                         ),
+                        version,
                         defmaker,
                     )
                     .with_context(|| format!("Could process anyOf {}", variant_name))?;
@@ -608,23 +676,31 @@ fn one_of_to_inline_type(
         }
     };
 
-    let definition = defmaker.push(Rc::new(Definition {
+    let definition = defmaker.push(
         name,
-        data: DefinitionData::Enum(REnum {
-            doc: doc.clone(),
-            variants,
-            discriminator,
-        }),
-    }));
+        version,
+        Definition {
+            data: DefinitionData::Enum(REnum {
+                doc: doc.clone(),
+                variants,
+                discriminator,
+            }),
+        },
+    )?;
 
     Ok(InlineType::Reference(definition))
 }
 
 impl Inlining for Schema {
-    fn inline(&self, name: String, defmaker: &mut DefinitionMaker) -> Result<InlineType> {
+    fn inline(
+        &self,
+        name: String,
+        version: usize,
+        defmaker: &mut DefinitionMaker,
+    ) -> Result<InlineType> {
         match &self.schema_kind {
             SchemaKind::Type(schema_type) => {
-                schema_type_to_inline_type(name, defmaker, schema_type, &self.schema_data)
+                schema_type_to_inline_type(name, version, defmaker, schema_type, &self.schema_data)
             }
             SchemaKind::OneOf { one_of } => {
                 let mut schemas = Vec::new();
@@ -639,16 +715,17 @@ impl Inlining for Schema {
 
                 one_of_to_inline_type(
                     name,
+                    version,
                     defmaker,
                     schemas,
                     &self.schema_data.discriminator,
                     &self.schema_data.description,
                 )
             }
-            SchemaKind::AnyOf { any_of } => bail!("Serializing 'anyOf' not supported"),
-            SchemaKind::AllOf { all_of } => bail!("Serializing 'allOf' not supported"),
-            SchemaKind::Not { not } => bail!("Serializing 'not' not supported"),
-            SchemaKind::Any(value) => {
+            SchemaKind::AnyOf { any_of: _ } => bail!("Serializing 'anyOf' not supported"),
+            SchemaKind::AllOf { all_of: _ } => bail!("Serializing 'allOf' not supported"),
+            SchemaKind::Not { not: _ } => bail!("Serializing 'not' not supported"),
+            SchemaKind::Any(_value) => {
                 bail!("Could not understand openapi object")
             }
         }
@@ -688,6 +765,7 @@ fn make_default_str(val: &str) -> (String, String) {
 }
 
 fn make_default_provider(
+    version: usize,
     val: &Option<serde_json::Value>,
     type_: &InlineType,
     defmaker: &mut DefinitionMaker,
@@ -736,12 +814,11 @@ fn make_default_provider(
         value,
     };
 
-    let definition = Rc::new(Definition {
-        name,
+    let definition = Definition {
         data: DefinitionData::DefaultProvider(provider),
-    });
+    };
 
-    let definition = defmaker.push(definition);
+    let definition = defmaker.push(name, version, definition)?;
 
     Ok(Some(InlineType::Reference(definition)))
 }
@@ -777,6 +854,7 @@ fn validate_required_default_and_nullable(
 fn inline_obj(
     obj: &ObjectType,
     name: String,
+    version: usize,
     defmaker: &mut DefinitionMaker,
     doc: &Option<String>,
 ) -> Result<InlineType> {
@@ -793,11 +871,12 @@ fn inline_obj(
         let prop_name_camel = to_rust_identifier(prop_name, Case::UpperCamel);
 
         let type_ = prop_schema
-            .inline(format!("{name}{prop_name_camel}"), defmaker)
+            .inline(format!("{name}{prop_name_camel}"), version, defmaker)
             .with_context(|| format!("Could not make inline type for {prop_name}"))?;
 
-        let default = make_default_provider(&prop_schema.schema_data.default, &type_, defmaker)
-            .with_context(|| format!("Could not make default value for {prop_name}"))?;
+        let default =
+            make_default_provider(version, &prop_schema.schema_data.default, &type_, defmaker)
+                .with_context(|| format!("Could not make default value for {prop_name}"))?;
 
         let prop_required = required.contains(prop_name);
 
@@ -817,40 +896,117 @@ fn inline_obj(
         })
     }
 
-    let definition = Rc::new(Definition {
-        name,
+    let definition = Definition {
         data: DefinitionData::Struct(RStruct {
             doc: doc.clone(),
             properties,
         }),
-    });
+    };
 
-    let definition = defmaker.push(definition);
+    let definition = defmaker.push(name, version, definition)?;
 
     Ok(InlineType::Reference(definition))
 }
 
-pub struct DefinitionMaker<'a> {
-    pub ctx: &'a OpenApiCtx<'a>,
-    pub dedup_store: Vec<Rc<Definition>>,
+/// Http method
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy, Serialize)]
+pub enum HttpMethod {
+    Post,
+    Get,
+    Delete,
 }
 
-impl<'a> DefinitionMaker<'a> {
-    pub fn new(ctx: &'a OpenApiCtx<'a>) -> Self {
+impl Display for HttpMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HttpMethod::Post => write!(f, "post"),
+            HttpMethod::Get => write!(f, "get"),
+            HttpMethod::Delete => write!(f, "delete"),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct OperationPath {
+    pub operation: String,
+    pub path: String,
+    pub method: HttpMethod, // Operation method
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct RustOperation {
+    pub doc: Option<String>,
+    pub param_path: Option<InlineType>,  // web::Path
+    pub param_query: Option<InlineType>, // web::Query
+    pub param_body: Option<InlineType>,  // web::Json
+
+    // Response
+    // -----------------------------
+    pub response: InlineType,
+}
+
+pub struct DefinitionMaker<'a, 'b, 'c> {
+    pub ctx: &'a OpenApiCtx<'a>,
+    pub dedup_store: &'b mut IndexMap<String, Definition>,
+    pub operations: &'c mut IndexMap<String, RustOperation>,
+}
+
+impl<'a, 'b, 'c> DefinitionMaker<'a, 'b, 'c> {
+    pub fn new(
+        ctx: &'a OpenApiCtx<'a>,
+        store: &'b mut IndexMap<String, Definition>,
+        operations: &'c mut IndexMap<String, RustOperation>,
+    ) -> Self {
         DefinitionMaker {
             ctx,
-            dedup_store: Vec::new(),
+            dedup_store: store,
+            operations,
         }
     }
 
-    pub fn push(&mut self, def: Rc<Definition>) -> Rc<Definition> {
-        for existing_def in &self.dedup_store {
+    pub fn push(&mut self, mut name: String, version: usize, def: Definition) -> Result<String> {
+        for (existing_def_name, existing_def) in &*self.dedup_store {
             if &def == existing_def {
-                return existing_def.clone();
+                return Ok(existing_def_name.clone());
             }
         }
-        self.dedup_store.push(def.clone());
-        def
+
+        // Add version prefix if value already exists
+        if self.dedup_store.contains_key(&name) {
+            name = match def.data {
+                DefinitionData::DefaultProvider(_) => format!("{}_v{}", name, version),
+                _ => format!("{}V{}", name, version),
+            };
+        }
+
+        if self.dedup_store.insert(name.clone(), def).is_some() {
+            bail!("Duplicate definition name {name}")
+        }
+
+        Ok(name)
+    }
+
+    pub fn push_operation(
+        &mut self,
+        mut name: String,
+        version: usize,
+        op: RustOperation,
+    ) -> Result<String> {
+        for (existing_op_name, existing_op) in &*self.operations {
+            if &op == existing_op {
+                return Ok(existing_op_name.clone());
+            }
+        }
+
+        if self.operations.contains_key(&name) {
+            name = format!("{}_v{}", name, version)
+        };
+
+        if self.operations.insert(name.clone(), op).is_some() {
+            bail!("Duplicate operation name {name}")
+        }
+
+        Ok(name)
     }
 }
 
@@ -863,12 +1019,11 @@ pub enum InlineType {
     Boolean,
     Any,
     Array(Box<InlineType>),  // Vec::<InlineType>
-    Map(Box<InlineType>),    // HashMap::<String, InlineType>
     Json(Box<InlineType>),   // web::Json
     Path(Box<InlineType>),   // web::Path
     Query(Box<InlineType>),  // web::Query
     Option(Box<InlineType>), // Option<InlineType>
-    Reference(Rc<Definition>),
+    Reference(String),
     Result(Box<InlineType>, Box<InlineType>),
     Detailed(Box<InlineType>),
 }
@@ -882,12 +1037,11 @@ impl Display for InlineType {
             InlineType::Boolean => write!(f, "bool"),
             InlineType::Any => write!(f, "serde_json::Value"),
             InlineType::Array(item) => write!(f, "Vec<{item}>"),
-            InlineType::Map(item) => write!(f, "HashMap<String,{item}>"),
             InlineType::Json(item) => write!(f, "web::Json<{item}>"),
             InlineType::Path(item) => write!(f, "web::Path<{item}>"),
             InlineType::Query(item) => write!(f, "web::Query<{item}>"),
             InlineType::Option(item) => write!(f, "Option<{item}>"),
-            InlineType::Reference(item) => Display::fmt(&item.name, f),
+            InlineType::Reference(item) => Display::fmt(&item, f),
             InlineType::Result(ok, err) => write!(f, "Result<{ok},{err}>"),
             InlineType::Detailed(item) => write!(f, "Detailed<{item}>"),
         }
@@ -955,26 +1109,37 @@ pub struct DefaultProvider {
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct StaticStr {
+    pub path: String,
+}
+
+/// Serves static string on given path
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct StaticStringPath {
+    pub data: String,
+}
+
+/// Serves static html on given path
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct StaticHtmlPath {
+    pub data: String,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub enum DefinitionData {
     Struct(RStruct),
     Enum(REnum),
     ApiErr(RApiErr),
     DefaultProvider(DefaultProvider),
+    StaticStr(StaticStr),
+    StaticStringPath(StaticStringPath),
+    StaticHtmlPath(StaticHtmlPath),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct Definition {
-    pub name: String,
     pub data: DefinitionData,
 }
-
-impl PartialEq for Definition {
-    fn eq(&self, other: &Self) -> bool {
-        self.data == other.data
-    }
-}
-
-impl Eq for Definition {}
 
 /// Get name for schema
 fn get_schema_name(name: String, title: &Option<String>) -> String {
