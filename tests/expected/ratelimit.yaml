@@ -229,6 +229,9 @@ api:
           doc: |
             Information about current cell state.
             Info and state are computed dynamically based on matched quotas.
+    to_docs_noprefix:
+      data: !Redirect
+        target: docs
   operations:
     health:
       doc: Check service health
@@ -261,49 +264,52 @@ api:
       param_body: null
       response: Result<web::Json<UpdateResult>,Detailed<CellTestError>>
   paths:
+  - operation: cell_test
+    path: /cell/test
+    method: Get
+  - operation: cell_update
+    path: /cell/update
+    method: Post
   - operation: health
     path: /health
-    method: Get
-  - operation: health
-    path: /v1/health
     method: Get
   - operation: quota_list
     path: /quota
     method: Get
-  - operation: quota_list
-    path: /v1/quota
-    method: Get
   - operation: quota_details
     path: /quota/{quota}
-    method: Get
-  - operation: quota_details
-    path: /v1/quota/{quota}
-    method: Get
-  - operation: cell_test
-    path: /cell/test
     method: Get
   - operation: cell_test
     path: /v1/cell/test
     method: Get
   - operation: cell_update
-    path: /cell/update
-    method: Post
-  - operation: cell_update
     path: /v1/cell/update
     method: Post
+  - operation: health
+    path: /v1/health
+    method: Get
+  - operation: quota_list
+    path: /v1/quota
+    method: Get
+  - operation: quota_details
+    path: /v1/quota/{quota}
+    method: Get
   static_services:
   - method: Get
-    path: /openapi.yaml
-    data: openapi
+    path: /
+    data: to_docs_noprefix
   - method: Get
     path: /docs
     data: docs
   - method: Get
+    path: /openapi.yaml
+    data: openapi
+  - method: Get
     path: /v1
     data: to_docs
   - method: Get
-    path: /v1/openapi.yaml
-    data: openapi
-  - method: Get
     path: /v1/docs
     data: docs
+  - method: Get
+    path: /v1/openapi.yaml
+    data: openapi

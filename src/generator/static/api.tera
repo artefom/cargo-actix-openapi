@@ -185,9 +185,11 @@ where
         App::new()
             .app_data(app_data.clone())
             .wrap(NormalizePath::trim())
+            // Static paths
             {%- for static_service in static_services %}
             .route({{static_service.path | quote}}, {{static_service.method}}().to({{static_service.target}}))
             {%- endfor %}
+            // Server routes
             {%- for path in paths %}
             .route({{path.path | quote}}, {{path.method}}().to(T::{{path.operation_id}}))
             {%- endfor %}

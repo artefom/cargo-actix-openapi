@@ -71,46 +71,49 @@ api:
       param_body: null
       response: web::Json<String>
   paths:
-  - operation: greet_user
-    path: /hello/{user}
-    method: Get
-  - operation: greet_user
-    path: /v1/hello/{user}
-    method: Get
   - operation: goodbye_user
     path: /goodbye/{user}
+    method: Get
+  - operation: greet_user
+    path: /hello/{user}
     method: Get
   - operation: goodbye_user
     path: /v1/goodbye/{user}
     method: Get
   - operation: greet_user
-    path: /v2/hello/{user}
+    path: /v1/hello/{user}
     method: Get
   - operation: goodbye_user_v2
     path: /v2/goodbye/{user}
     method: Get
+  - operation: greet_user
+    path: /v2/hello/{user}
+    method: Get
   static_services:
   - method: Get
-    path: /openapi.yaml
-    data: openapi
+    path: /
+    data: to_docs_v2
   - method: Get
     path: /docs
     data: docs
   - method: Get
+    path: /openapi.yaml
+    data: openapi
+  - method: Get
     path: /v1
     data: to_docs
-  - method: Get
-    path: /v1/openapi.yaml
-    data: openapi
   - method: Get
     path: /v1/docs
     data: docs
   - method: Get
+    path: /v1/openapi.yaml
+    data: openapi
+  - method: Get
     path: /v2
     data: to_docs_v2
   - method: Get
-    path: /v2/openapi.yaml
-    data: openapi_v2
-  - method: Get
     path: /v2/docs
     data: docs
+  - method: Get
+    path: /v2/openapi.yaml
+    data: openapi_v2

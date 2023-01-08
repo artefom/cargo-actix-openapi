@@ -169,6 +169,11 @@ async fn to_docs() -> HttpResponse {
         .append_header(("Location", "v1/docs"))
         .body("")
 }
+async fn to_docs_noprefix() -> HttpResponse {
+    HttpResponse::build(StatusCode::TEMPORARY_REDIRECT)
+        .append_header(("Location", "docs"))
+        .body("")
+}
 
 pub async fn run_service<T, S>(bind: &str, initial_state: S) -> Result<(), std::io::Error>
 where
@@ -183,11 +188,14 @@ where
         App::new()
             .app_data(app_data.clone())
             .wrap(NormalizePath::trim())
-            .route("/openapi.yaml", get().to(openapi))
+            // Static paths
+            .route("/", get().to(to_docs_noprefix))
             .route("/docs", get().to(docs))
+            .route("/openapi.yaml", get().to(openapi))
             .route("/v1", get().to(to_docs))
-            .route("/v1/openapi.yaml", get().to(openapi))
             .route("/v1/docs", get().to(docs))
+            .route("/v1/openapi.yaml", get().to(openapi))
+            // Server routes
             .route("/hello/{user}", get().to(T::greet_user))
             .route("/v1/hello/{user}", get().to(T::greet_user))
     })

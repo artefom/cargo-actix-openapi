@@ -84,6 +84,9 @@ api:
           default: default_int_1
           type_: i64
           doc: null
+    to_docs_noprefix:
+      data: !Redirect
+        target: docs
   operations:
     greet_user:
       doc: Returns a greeting to the user!
@@ -100,17 +103,20 @@ api:
     method: Get
   static_services:
   - method: Get
-    path: /openapi.yaml
-    data: openapi
+    path: /
+    data: to_docs_noprefix
   - method: Get
     path: /docs
     data: docs
   - method: Get
+    path: /openapi.yaml
+    data: openapi
+  - method: Get
     path: /v1
     data: to_docs
   - method: Get
-    path: /v1/openapi.yaml
-    data: openapi
-  - method: Get
     path: /v1/docs
     data: docs
+  - method: Get
+    path: /v1/openapi.yaml
+    data: openapi

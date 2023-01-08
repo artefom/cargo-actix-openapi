@@ -86,12 +86,12 @@ fn to_rust_operation(
 
     let path_params_inline = params_spliited
         .path_parameters
-        .inline(format!("{name_upper}Path"), version, defmaker)
+        .inline(format!("{name_upper}Path"), version, ctx, defmaker)
         .context("Could not inline path parameters")?;
 
     let query_params_inline = params_spliited
         .query_parameters
-        .inline(format!("{name_upper}Query"), version, defmaker)
+        .inline(format!("{name_upper}Query"), version, ctx, defmaker)
         .context("Could not inline query parameters")?;
 
     if !params_spliited.header_parameters.is_empty() {
@@ -104,12 +104,12 @@ fn to_rust_operation(
 
     let param_body = operation
         .request_body
-        .inline(format!("{name_upper}Body"), version, defmaker)
+        .inline(format!("{name_upper}Body"), version, ctx, defmaker)
         .context("Could not inline Body")?;
 
     let response = operation
         .responses
-        .inline(name_upper, version, defmaker)
+        .inline(name_upper, version, ctx, defmaker)
         .context("Could not inline response")?;
 
     let operation = RustOperation {
@@ -255,6 +255,8 @@ pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustM
 
     let mut seen_version = IndexSet::new();
 
+    let mut defmaker = DefinitionMaker::new(&mut definitions, &mut operations);
+
     for OpenApiWithPath { spec, spec_path } in specs {
         let ctx = OpenApiCtx::new(&spec.components);
 
@@ -264,8 +266,6 @@ pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustM
         if !seen_version.insert(version) {
             bail!("Duplicate openapi version: {version}")
         }
-
-        let mut defmaker = DefinitionMaker::new(&ctx, &mut definitions, &mut operations);
 
         if version == 1 {
             static_services.extend(to_openapi_site(
@@ -322,18 +322,32 @@ pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustM
         }
     }
 
-    // let Some(latest_version) = seen_version.iter().max() else {
-    //     bail!("Could not determine latest version to redirect to")
-    // };
+    let Some(latest_version) = seen_version.iter().max().cloned() else {
+        bail!("Could not determine latest version to redirect to")
+    };
 
-    
-    // static_services.push(add_redirect(
-    //     "to_latest_docs".to_string(),
-    //     1,
-    //     format!("/"),
-    //     format!("v{latest_version}/docs"),
-    //     &mut defmaker,
-    // )?);
+    // Add redirect to latest docs
+    if latest_version == 1 {
+        static_services.push(add_redirect(
+            "to_docs_noprefix".to_string(),
+            latest_version,
+            format!("/"),
+            format!("docs"),
+            &mut defmaker,
+        )?);
+    } else {
+        static_services.push(add_redirect(
+            "to_latest_docs".to_string(),
+            latest_version,
+            format!("/"),
+            format!("v{latest_version}/docs"),
+            &mut defmaker,
+        )?);
+    }
+
+    // Sort paths
+    static_services.sort_by_cached_key(|x| x.path.clone());
+    paths.sort_by_cached_key(|x| x.path.clone());
 
     Ok(RustModule {
         api: ApiService {

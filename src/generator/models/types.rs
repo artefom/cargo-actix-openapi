@@ -57,6 +57,7 @@ pub trait MaybeInlining {
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<Option<InlineType>>;
 }
@@ -69,10 +70,11 @@ where
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<Option<InlineType>> {
         match self {
-            Some(value) => Ok(Some(value.inline(name, version, defmaker)?)),
+            Some(value) => Ok(Some(value.inline(name, version, ctx, defmaker)?)),
             None => Ok(None),
         }
     }
@@ -86,10 +88,11 @@ where
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<Option<InlineType>> {
-        let deref = defmaker.ctx.deref(self)?;
-        deref.inline(name, version, defmaker)
+        let deref = ctx.deref(self)?;
+        deref.inline(name, version, ctx, defmaker)
     }
 }
 
@@ -98,6 +101,7 @@ pub trait Inlining {
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<InlineType>;
 }
@@ -110,10 +114,11 @@ where
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<InlineType> {
-        let deref = defmaker.ctx.deref(self)?;
-        deref.inline(name, version, defmaker)
+        let deref = ctx.deref(self)?;
+        deref.inline(name, version, ctx, defmaker)
     }
 }
 
@@ -122,11 +127,12 @@ impl Inlining for IndexMap<String, MediaType> {
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<InlineType> {
-        let schema = self.to_schema(defmaker.ctx)?;
+        let schema = self.to_schema(ctx)?;
         Ok(InlineType::Json(Box::new(
-            schema.inline(name, version, defmaker)?,
+            schema.inline(name, version, ctx, defmaker)?,
         )))
     }
 }
@@ -136,9 +142,10 @@ impl Inlining for RequestBody {
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<InlineType> {
-        let inner = self.content.inline(name, version, defmaker)?;
+        let inner = self.content.inline(name, version, ctx, defmaker)?;
         if self.required {
             Ok(inner)
         } else {
@@ -216,14 +223,15 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<InlineType> {
         let mut api_err_variants = Vec::new();
         let mut doc_vec = Vec::new();
         for (status_code, response) in self {
             let status = status_to_string(status_code)?;
-            let response = defmaker.ctx.deref(response)?;
-            let schema = response.content.to_schema(defmaker.ctx)?;
+            let response = ctx.deref(response)?;
+            let schema = response.content.to_schema(ctx)?;
             let schema = match &schema.schema_kind {
                 SchemaKind::Type(value) => value,
                 _ => bail!("Only concrete type schemas are implemented"),
@@ -307,9 +315,10 @@ impl Inlining for Response {
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<InlineType> {
-        self.content.inline(name, version, defmaker)
+        self.content.inline(name, version, ctx, defmaker)
     }
 }
 
@@ -318,6 +327,7 @@ impl Inlining for Responses {
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<InlineType> {
         // Render success response
@@ -327,13 +337,14 @@ impl Inlining for Responses {
             bail!("Only success code '200' supported")
         }
 
-        let success_inline = success_response.inline(name.clone(), version, defmaker)?;
+        let success_inline = success_response.inline(name.clone(), version, ctx, defmaker)?;
 
         // Render error responses
         let error_responses = get_error_responses(&self.responses);
 
         let res = if !error_responses.is_empty() {
-            let err_inline = error_responses.inline(format!("{name}Error"), version, defmaker)?;
+            let err_inline =
+                error_responses.inline(format!("{name}Error"), version, ctx, defmaker)?;
             InlineType::Result(
                 Box::new(success_inline),
                 Box::new(InlineType::Detailed(Box::new(err_inline))),
@@ -351,10 +362,11 @@ impl Inlining for ParameterData {
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<InlineType> {
-        let schema = self.format.to_schema(defmaker.ctx)?;
-        schema.inline(name, version, defmaker)
+        let schema = self.format.to_schema(ctx)?;
+        schema.inline(name, version, ctx, defmaker)
     }
 }
 
@@ -362,6 +374,7 @@ fn render_parameter<T>(
     name: &String,
     version: usize,
     param: &T,
+    ctx: &OpenApiCtx<'_>,
     defmaker: &mut DefinitionMaker,
 ) -> Result<RStructProp>
 where
@@ -373,11 +386,11 @@ where
         name,
         to_rust_identifier(&param_data.name, Case::UpperCamel)
     );
-    let inline = param.data().inline(inline_name, version, defmaker)?;
+    let inline = param.data().inline(inline_name, version, ctx, defmaker)?;
 
     let parameter_schema = param_data
         .format
-        .to_schema(defmaker.ctx)
+        .to_schema(ctx)
         .with_context(|| format!("Could not get parameter schema for {}", &param_data.name))?;
 
     let default = make_default_provider(
@@ -411,6 +424,7 @@ where
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<Option<InlineType>> {
         if self.is_empty() {
@@ -420,7 +434,7 @@ where
 
         for param in self {
             properties.push(
-                render_parameter(&name, version, param, defmaker)
+                render_parameter(&name, version, param, ctx, defmaker)
                     .with_context(|| format!("Could not render parameter {}", param.data().name))?,
             );
         }
@@ -536,6 +550,7 @@ fn remove_options<T>(arr: &Vec<Option<T>>) -> Result<Vec<&T>> {
 fn schema_type_to_inline_type(
     name: String,
     version: usize,
+    ctx: &OpenApiCtx<'_>,
     defmaker: &mut DefinitionMaker,
     schema_type: &Type,
     schema_data: &SchemaData,
@@ -556,13 +571,13 @@ fn schema_type_to_inline_type(
         Type::Boolean {} => InlineType::Boolean,
         Type::Object(val) => {
             let name = get_schema_name(name, &schema_data.title);
-            inline_obj(val, name, version, defmaker, &schema_data.description)?
+            inline_obj(val, name, version, ctx, defmaker, &schema_data.description)?
         }
         Type::Array(val) => {
             let new_inline = match &val.items {
                 Some(value) => {
-                    let deref = defmaker.ctx.deref_boxed(value)?;
-                    deref.inline(format!("{name}Item"), version, defmaker)?
+                    let deref = ctx.deref_boxed(value)?;
+                    deref.inline(format!("{name}Item"), version, ctx, defmaker)?
                 }
                 None => InlineType::Any,
             };
@@ -580,6 +595,7 @@ fn schema_type_to_inline_type(
 fn get_discriminator_prop(
     schema_orig: &Schema,
     discriminator: &String,
+    ctx: &OpenApiCtx<'_>,
     defmaker: &mut DefinitionMaker,
 ) -> Result<(String, Schema)> {
     let SchemaKind::Type(ref schema) = schema_orig.schema_kind else {
@@ -600,7 +616,7 @@ fn get_discriminator_prop(
         schema_data: schema_orig.schema_data.clone(),
         schema_kind: SchemaKind::Type(Type::Object(schema)),
     };
-    let discriminator_prop = defmaker.ctx.deref_boxed(discriminator_prop)?;
+    let discriminator_prop = ctx.deref_boxed(discriminator_prop)?;
 
     let SchemaKind::Type(ref discriminator_prop) = discriminator_prop.schema_kind else {
         bail!("Only concrete types are supported as discriminators")
@@ -638,6 +654,7 @@ fn discriminator_property(discriminator: &openapiv3::Discriminator) -> Result<St
 fn one_of_to_inline_type(
     name: String,
     version: usize,
+    ctx: &OpenApiCtx<'_>,
     defmaker: &mut DefinitionMaker,
     schemas: Vec<&Schema>,
     discriminator: &Option<openapiv3::Discriminator>,
@@ -650,7 +667,7 @@ fn one_of_to_inline_type(
             let discriminator = discriminator_property(discriminator)?;
             for schema in schemas {
                 let (variant_name, schema) =
-                    get_discriminator_prop(schema, &discriminator, defmaker)?;
+                    get_discriminator_prop(schema, &discriminator, ctx, defmaker)?;
 
                 let schema_inlined = schema
                     .inline(
@@ -659,6 +676,7 @@ fn one_of_to_inline_type(
                             Case::UpperCamel,
                         ),
                         version,
+                        ctx,
                         defmaker,
                     )
                     .with_context(|| format!("Could process anyOf {}", variant_name))?;
@@ -696,16 +714,22 @@ impl Inlining for Schema {
         &self,
         name: String,
         version: usize,
+        ctx: &OpenApiCtx<'_>,
         defmaker: &mut DefinitionMaker,
     ) -> Result<InlineType> {
         match &self.schema_kind {
-            SchemaKind::Type(schema_type) => {
-                schema_type_to_inline_type(name, version, defmaker, schema_type, &self.schema_data)
-            }
+            SchemaKind::Type(schema_type) => schema_type_to_inline_type(
+                name,
+                version,
+                ctx,
+                defmaker,
+                schema_type,
+                &self.schema_data,
+            ),
             SchemaKind::OneOf { one_of } => {
                 let mut schemas = Vec::new();
                 for schema in one_of {
-                    let schema = defmaker.ctx.deref(schema)?;
+                    let schema = ctx.deref(schema)?;
                     schemas.push(schema);
                 }
 
@@ -716,6 +740,7 @@ impl Inlining for Schema {
                 one_of_to_inline_type(
                     name,
                     version,
+                    ctx,
                     defmaker,
                     schemas,
                     &self.schema_data.discriminator,
@@ -855,6 +880,7 @@ fn inline_obj(
     obj: &ObjectType,
     name: String,
     version: usize,
+    ctx: &OpenApiCtx<'_>,
     defmaker: &mut DefinitionMaker,
     doc: &Option<String>,
 ) -> Result<InlineType> {
@@ -863,15 +889,14 @@ fn inline_obj(
     let required: HashSet<&String> = obj.required.iter().collect();
 
     for (prop_name, prop_schema) in obj.properties.iter() {
-        let prop_schema = defmaker
-            .ctx
+        let prop_schema = ctx
             .deref_boxed(prop_schema)
             .with_context(|| format!("Could not dereference {prop_name}"))?;
 
         let prop_name_camel = to_rust_identifier(prop_name, Case::UpperCamel);
 
         let type_ = prop_schema
-            .inline(format!("{name}{prop_name_camel}"), version, defmaker)
+            .inline(format!("{name}{prop_name_camel}"), version, ctx, defmaker)
             .with_context(|| format!("Could not make inline type for {prop_name}"))?;
 
         let default =
@@ -945,20 +970,19 @@ pub struct RustOperation {
     pub response: InlineType,
 }
 
-pub struct DefinitionMaker<'a, 'b, 'c> {
-    pub ctx: &'a OpenApiCtx<'a>,
-    pub dedup_store: &'b mut IndexMap<String, Definition>,
-    pub operations: &'c mut IndexMap<String, RustOperation>,
+// pub ctx: &'a OpenApiCtx<'a>,
+
+pub struct DefinitionMaker<'a, 'b> {
+    pub dedup_store: &'a mut IndexMap<String, Definition>,
+    pub operations: &'b mut IndexMap<String, RustOperation>,
 }
 
-impl<'a, 'b, 'c> DefinitionMaker<'a, 'b, 'c> {
+impl<'a, 'b> DefinitionMaker<'a, 'b> {
     pub fn new(
-        ctx: &'a OpenApiCtx<'a>,
-        store: &'b mut IndexMap<String, Definition>,
-        operations: &'c mut IndexMap<String, RustOperation>,
+        store: &'a mut IndexMap<String, Definition>,
+        operations: &'b mut IndexMap<String, RustOperation>,
     ) -> Self {
         DefinitionMaker {
-            ctx,
             dedup_store: store,
             operations,
         }

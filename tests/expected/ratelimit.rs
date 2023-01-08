@@ -349,6 +349,11 @@ async fn to_docs() -> HttpResponse {
         .append_header(("Location", "v1/docs"))
         .body("")
 }
+async fn to_docs_noprefix() -> HttpResponse {
+    HttpResponse::build(StatusCode::TEMPORARY_REDIRECT)
+        .append_header(("Location", "docs"))
+        .body("")
+}
 
 pub async fn run_service<T, S>(bind: &str, initial_state: S) -> Result<(), std::io::Error>
 where
@@ -363,21 +368,24 @@ where
         App::new()
             .app_data(app_data.clone())
             .wrap(NormalizePath::trim())
-            .route("/openapi.yaml", get().to(openapi))
+            // Static paths
+            .route("/", get().to(to_docs_noprefix))
             .route("/docs", get().to(docs))
+            .route("/openapi.yaml", get().to(openapi))
             .route("/v1", get().to(to_docs))
-            .route("/v1/openapi.yaml", get().to(openapi))
             .route("/v1/docs", get().to(docs))
-            .route("/health", get().to(T::health))
-            .route("/v1/health", get().to(T::health))
-            .route("/quota", get().to(T::quota_list))
-            .route("/v1/quota", get().to(T::quota_list))
-            .route("/quota/{quota}", get().to(T::quota_details))
-            .route("/v1/quota/{quota}", get().to(T::quota_details))
+            .route("/v1/openapi.yaml", get().to(openapi))
+            // Server routes
             .route("/cell/test", get().to(T::cell_test))
-            .route("/v1/cell/test", get().to(T::cell_test))
             .route("/cell/update", post().to(T::cell_update))
+            .route("/health", get().to(T::health))
+            .route("/quota", get().to(T::quota_list))
+            .route("/quota/{quota}", get().to(T::quota_details))
+            .route("/v1/cell/test", get().to(T::cell_test))
             .route("/v1/cell/update", post().to(T::cell_update))
+            .route("/v1/health", get().to(T::health))
+            .route("/v1/quota", get().to(T::quota_list))
+            .route("/v1/quota/{quota}", get().to(T::quota_details))
     })
     .bind(bind)?
     .run()
