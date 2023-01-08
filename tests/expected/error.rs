@@ -129,17 +129,12 @@ pub enum GreetUserError {
 
 impl Display for GreetUserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::NotFound => {
-                write!(f, "Not found")
-            }
-            Self::InvalidCharacterInName => {
-                write!(f, "Invalid character in name")
-            }
-            Self::NameContainsSpace => {
-                write!(f, "Name contains space")
-            }
-        }
+        let message = match self {
+            Self::NotFound => "Not found",
+            Self::InvalidCharacterInName => "Invalid character in name",
+            Self::NameContainsSpace => "Name contains space",
+        };
+        f.write_str(message)
     }
 }
 

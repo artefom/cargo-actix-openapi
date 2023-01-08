@@ -253,11 +253,10 @@ pub enum QuotaDetailsError {
 
 impl Display for QuotaDetailsError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::QuotaNotFound => {
-                write!(f, "Quota not found")
-            }
-        }
+        let message = match self {
+            Self::QuotaNotFound => "Quota not found",
+        };
+        f.write_str(message)
     }
 }
 
@@ -282,14 +281,11 @@ pub enum CellTestError {
 
 impl Display for CellTestError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::DuplicateQueryKey => {
-                write!(f, "Duplicate query key")
-            }
-            Self::NoQuotasMatchingQueryFound => {
-                write!(f, "No quotas matching query found")
-            }
-        }
+        let message = match self {
+            Self::DuplicateQueryKey => "Duplicate query key",
+            Self::NoQuotasMatchingQueryFound => "No quotas matching query found",
+        };
+        f.write_str(message)
     }
 }
 
