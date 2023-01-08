@@ -19,6 +19,8 @@ use actix_web::{
     web, App, HttpRequest, HttpResponse, HttpServer, ResponseError,
 };
 
+use actix_web_prom::PrometheusMetricsBuilder;
+
 use async_trait::async_trait;
 
 // Defaults
@@ -173,6 +175,11 @@ async fn {{redirect.title}}() -> HttpResponse {
 }
 {%- endfor %}
 
+// Tells that service is alive
+async fn health() -> HttpResponse {
+    HttpResponse::Ok().finish()
+}
+
 pub async fn run_service<T, S>(bind: &str, initial_state: S) -> Result<(), std::io::Error>
 where
     T: ApiService<S> + 'static,
@@ -180,20 +187,33 @@ where
 {
     let app_data = web::Data::new(initial_state);
 
+    let prometheus = PrometheusMetricsBuilder::new("api")
+        .endpoint("/metrics")
+        .build()
+        .unwrap();
+
     use web::{delete, get, post};
 
     HttpServer::new(move || {
+
+        let api = web::scope("")
+            .wrap(prometheus.clone())
+            {%- for path in paths %}
+            .route({{path.path | quote}}, {{path.method}}().to(T::{{path.operation_id}}))
+            {%- endfor %}
+            .wrap(prometheus.clone());
+
         App::new()
             .app_data(app_data.clone())
             .wrap(NormalizePath::new(TrailingSlash::MergeOnly))
+            // Aux services
+            .route("/health", get().to(health))
             // Static paths
             {%- for static_service in static_services %}
             .route({{static_service.path | quote}}, {{static_service.method}}().to({{static_service.target}}))
             {%- endfor %}
             // Server routes
-            {%- for path in paths %}
-            .route({{path.path | quote}}, {{path.method}}().to(T::{{path.operation_id}}))
-            {%- endfor %}
+            .service(api)
     })
     .bind(bind)?
     .run()

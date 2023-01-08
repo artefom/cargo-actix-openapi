@@ -15,6 +15,8 @@ use actix_web::{
     web, App, HttpRequest, HttpResponse, HttpServer, ResponseError,
 };
 
+use actix_web_prom::PrometheusMetricsBuilder;
+
 use async_trait::async_trait;
 
 // Defaults
@@ -182,6 +184,11 @@ async fn to_v2_docs() -> HttpResponse {
         .body("")
 }
 
+// Tells that service is alive
+async fn health() -> HttpResponse {
+    HttpResponse::Ok().finish()
+}
+
 pub async fn run_service<T, S>(bind: &str, initial_state: S) -> Result<(), std::io::Error>
 where
     T: ApiService<S> + 'static,
@@ -189,12 +196,30 @@ where
 {
     let app_data = web::Data::new(initial_state);
 
+    let prometheus = PrometheusMetricsBuilder::new("api")
+        .endpoint("/metrics")
+        .build()
+        .unwrap();
+
     use web::{delete, get, post};
 
     HttpServer::new(move || {
+
+        let api = web::scope("")
+            .wrap(prometheus.clone())
+            .route("/goodbye/{user}", get().to(T::goodbye_user))
+            .route("/hello/{user}", get().to(T::greet_user))
+            .route("/v1/goodbye/{user}", get().to(T::goodbye_user))
+            .route("/v1/hello/{user}", get().to(T::greet_user))
+            .route("/v2/goodbye/{user}", get().to(T::goodbye_user_v2))
+            .route("/v2/hello/{user}", get().to(T::greet_user))
+            .wrap(prometheus.clone());
+
         App::new()
             .app_data(app_data.clone())
             .wrap(NormalizePath::new(TrailingSlash::MergeOnly))
+            // Aux services
+            .route("/health", get().to(health))
             // Static paths
             .route("/", get().to(to_v2_docs))
             .route("/docs", get().to(docs))
@@ -208,12 +233,7 @@ where
             .route("/v2/docs", get().to(docs))
             .route("/v2/openapi.yaml", get().to(openapi_v2))
             // Server routes
-            .route("/goodbye/{user}", get().to(T::goodbye_user))
-            .route("/hello/{user}", get().to(T::greet_user))
-            .route("/v1/goodbye/{user}", get().to(T::goodbye_user))
-            .route("/v1/hello/{user}", get().to(T::greet_user))
-            .route("/v2/goodbye/{user}", get().to(T::goodbye_user_v2))
-            .route("/v2/hello/{user}", get().to(T::greet_user))
+            .service(api)
     })
     .bind(bind)?
     .run()

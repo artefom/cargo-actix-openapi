@@ -225,11 +225,13 @@ pub fn extract_major_from_version(version: &str) -> Result<usize> {
 fn add_redirect(
     name: String,
     version: usize,
-    path: String,
-    target: String,
+    path: &str,
+    target: &str,
     defmaker: &mut DefinitionMaker,
 ) -> Result<StaticService> {
-    let redirect: StaticRedirect = StaticRedirect { target };
+    let redirect: StaticRedirect = StaticRedirect {
+        target: target.to_string(),
+    };
 
     let operation = defmaker.push(
         name,
@@ -241,7 +243,7 @@ fn add_redirect(
 
     Ok(StaticService {
         data: operation,
-        path,
+        path: path.to_string(),
         method: HttpMethod::Get,
     })
 }
@@ -280,16 +282,16 @@ pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustM
         static_services.push(add_redirect(
             format!("to_v{version}_docs"),
             version,
-            format!("/v{version}"),
-            format!("v{version}/docs"),
+            &format!("/v{version}"),
+            &format!("v{version}/docs"),
             &mut defmaker,
         )?);
 
         static_services.push(add_redirect(
             "to_docs".to_string(),
             version,
-            format!("/v{version}/"),
-            format!("docs"),
+            &format!("/v{version}/"),
+            "docs",
             &mut defmaker,
         )?);
 
@@ -339,16 +341,16 @@ pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustM
         static_services.push(add_redirect(
             "to_docs".to_string(),
             latest_version,
-            format!("/"),
-            format!("docs"),
+            "/",
+            "docs",
             &mut defmaker,
         )?);
     } else {
         static_services.push(add_redirect(
             format!("to_v{latest_version}_docs"),
             latest_version,
-            format!("/"),
-            format!("v{latest_version}/docs"),
+            "/",
+            &format!("v{latest_version}/docs"),
             &mut defmaker,
         )?);
     }
