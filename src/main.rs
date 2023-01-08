@@ -169,6 +169,11 @@ fn scan_dir(target_file: &Path, dir: &Path) -> Result<(String, Vec<generator::Op
         }
     };
 
+    let Some(doc_path) = pathdiff::diff_paths(&doc_path, &target_dir) else {
+        bail!(format!("Could not express path {} relative to {}", doc_path.to_string_lossy(), 
+        target_dir.to_string_lossy()))
+    };
+
     let Some(doc_path) = doc_path.to_str() else {
         bail!("Could not represend doc path {} as string", doc_path.to_string_lossy())
     };

@@ -101,6 +101,12 @@ pub struct StaticHtml {
 }
 
 #[derive(Debug, Serialize)]
+pub struct StaticRedirect {
+    pub title: String,
+    pub target: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct StaticService {
     pub method: String,
     pub path: String,
@@ -115,11 +121,10 @@ pub struct RustModule {
     pub errors: Vec<RustError>,
     pub methods: Vec<RustMethod>,
     pub paths: Vec<MethodPath>,
-
+    pub redirects: Vec<StaticRedirect>,
     pub static_includes: Vec<StaticInclude>,
     pub static_strings: Vec<StaticString>,
     pub static_htmls: Vec<StaticHtml>,
-
     pub static_services: Vec<StaticService>,
 }
 

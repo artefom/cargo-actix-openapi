@@ -1,6 +1,6 @@
 {%- macro render(model) -%}
 {{- model.doc | comment | newline}}
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct {{model.title}} {
     {%- for prop in model.props %}
     {{- prop.doc | comment | newline | indent(n=4) }}

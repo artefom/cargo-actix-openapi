@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use openapiv3::OpenAPI;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 
 mod models;
 mod templates;
@@ -11,7 +11,7 @@ use models::to_rust_module;
 use self::models::{
     types::{
         DefaultProvider, OperationPath, RApiErr, REnum, RStruct, RustOperation, StaticHtmlPath,
-        StaticStr, StaticStringPath,
+        StaticRedirect, StaticStr, StaticStringPath,
     },
     OpenApiWithPath,
 };
@@ -174,6 +174,13 @@ fn convert_static_html(name: &str, value: &StaticHtmlPath) -> templates::StaticH
     }
 }
 
+fn convert_redirect(name: &str, value: &StaticRedirect) -> templates::StaticRedirect {
+    templates::StaticRedirect {
+        title: name.to_string(),
+        target: value.target.clone(),
+    }
+}
+
 pub struct OpenapiWithMeta {
     pub content: String,
     pub path: String,
@@ -202,6 +209,7 @@ pub fn generate_api(docs_path: &str, specs: &[OpenapiWithMeta]) -> Result<(Strin
     let mut static_includes = Vec::new();
     let mut static_strings = Vec::new();
     let mut static_htmls = Vec::new();
+    let mut redirects = Vec::new();
 
     for (def_name, def) in &rust_module.api.definitions {
         {
@@ -216,6 +224,7 @@ pub fn generate_api(docs_path: &str, specs: &[OpenapiWithMeta]) -> Result<(Strin
                     static_strings.push(convert_static_string(def_name, value))
                 }
                 StaticHtmlPath(value) => static_htmls.push(convert_static_html(def_name, value)),
+                Redirect(value) => redirects.push(convert_redirect(def_name, value)),
             }
         }
     }
@@ -253,6 +262,7 @@ pub fn generate_api(docs_path: &str, specs: &[OpenapiWithMeta]) -> Result<(Strin
         static_strings,
         static_htmls,
         static_services,
+        redirects,
     };
 
     let serialized = templates::render_rust_module(rust_module)?;

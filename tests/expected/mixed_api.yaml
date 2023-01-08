@@ -12,6 +12,9 @@ api:
     docs:
       data: !StaticHtmlPath
         data: DOCS_HTML
+    to_docs:
+      data: !Redirect
+        target: v1/docs
     GreetUserPath:
       data: !Struct
         doc: null
@@ -30,10 +33,13 @@ api:
           default: null
           type_: String
           doc: null
+    to_docs_v2:
+      data: !Redirect
+        target: v2/docs
     DOCS_OPENAPIV2:
       data: !StaticStr
         path: static/openapi_v2.yaml
-    openapiV2:
+    openapi_v2:
       data: !StaticStringPath
         data: DOCS_OPENAPIV2
     GoodbyeUserPathV2:
@@ -91,14 +97,20 @@ api:
     path: /docs
     data: docs
   - method: Get
+    path: /v1
+    data: to_docs
+  - method: Get
     path: /v1/openapi.yaml
     data: openapi
   - method: Get
     path: /v1/docs
     data: docs
   - method: Get
+    path: /v2
+    data: to_docs_v2
+  - method: Get
     path: /v2/openapi.yaml
-    data: openapiV2
+    data: openapi_v2
   - method: Get
     path: /v2/docs
     data: docs

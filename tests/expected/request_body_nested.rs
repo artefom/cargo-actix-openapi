@@ -28,13 +28,13 @@ fn default_float_0_1() -> f64 {
 // Struct
 // -------------------------------
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct GreetUserPath {
     /// The name of the user to greet.
     pub user: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct GreetUserBodyObj {
     #[serde(default = "default_int_1")]
     pub foo: i64,
@@ -42,7 +42,7 @@ pub struct GreetUserBodyObj {
     pub bar: f64,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct GreetUserBody {
     pub str: String,
     pub obj: GreetUserBodyObj,
@@ -50,6 +50,18 @@ pub struct GreetUserBody {
 
 // Error with details
 // -------------------------------
+
+
+/// Create detailed errors with ease
+#[macro_export]
+macro_rules! detailed {
+    ($err:expr,$msg:expr) => {
+        $crate::server::api::Detailed {
+            error: $err,
+            details: $msg.to_string(),
+        }
+    };
+}
 
 /// Bails with detailed api error
 #[macro_export]
@@ -148,11 +160,9 @@ async fn docs() -> HttpResponse {
         .content_type("text/html; charset=utf-8")
         .body(DOCS_HTML)
 }
-
-#[get("/")]
-async fn redirect_to_docs() -> HttpResponse {
-    HttpResponse::build(StatusCode::PERMANENT_REDIRECT)
-        .append_header(("Location", "docs"))
+async fn to_docs() -> HttpResponse {
+    HttpResponse::build(StatusCode::TEMPORARY_REDIRECT)
+        .append_header(("Location", "v1/docs"))
         .body("")
 }
 
@@ -163,35 +173,19 @@ where
 {
     let app_data = web::Data::new(initial_state);
 
+    use web::{get,post,delete};
+
     HttpServer::new(move || {
         App::new()
             .app_data(app_data.clone())
             .wrap(NormalizePath::trim())
-            .service(redirect_to_docs)
-            .route(
-                "/openapi.yaml",
-                web::get().to(openapi)
-            )
-            .route(
-                "/docs",
-                web::get().to(docs)
-            )
-            .route(
-                "/v1/openapi.yaml",
-                web::get().to(openapi)
-            )
-            .route(
-                "/v1/docs",
-                web::get().to(docs)
-            )
-            .route(
-                "/hello/{user}",
-                web::post().to(T::greet_user)
-            )
-            .route(
-                "/v1/hello/{user}",
-                web::post().to(T::greet_user)
-            )
+            .route("/openapi.yaml", get().to(openapi))
+            .route("/docs", get().to(docs))
+            .route("/v1", get().to(to_docs))
+            .route("/v1/openapi.yaml", get().to(openapi))
+            .route("/v1/docs", get().to(docs))
+            .route("/hello/{user}", post().to(T::greet_user))
+            .route("/v1/hello/{user}", post().to(T::greet_user))
     })
     .bind(bind)?
     .run()

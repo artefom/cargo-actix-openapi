@@ -40,6 +40,18 @@ use async_trait::async_trait;
 // Error with details
 // -------------------------------
 
+
+/// Create detailed errors with ease
+#[macro_export]
+macro_rules! detailed {
+    ($err:expr,$msg:expr) => {
+        $crate::server::api::Detailed {
+            error: $err,
+            details: $msg.to_string(),
+        }
+    };
+}
+
 /// Bails with detailed api error
 #[macro_export]
 macro_rules! apibail {
@@ -152,12 +164,13 @@ async fn {{static_html.title}}() -> HttpResponse {
 }
 {%- endfor %}
 
-#[get("/")]
-async fn redirect_to_docs() -> HttpResponse {
-    HttpResponse::build(StatusCode::PERMANENT_REDIRECT)
-        .append_header(("Location", "docs"))
+{%- for redirect in redirects %}
+async fn {{redirect.title}}() -> HttpResponse {
+    HttpResponse::build(StatusCode::TEMPORARY_REDIRECT)
+        .append_header(("Location", {{redirect.target | quote}}))
         .body("")
 }
+{%- endfor %}
 
 pub async fn run_service<T, S>(bind: &str, initial_state: S) -> Result<(), std::io::Error>
 where
@@ -166,22 +179,17 @@ where
 {
     let app_data = web::Data::new(initial_state);
 
+    use web::{get,post,delete};
+
     HttpServer::new(move || {
         App::new()
             .app_data(app_data.clone())
             .wrap(NormalizePath::trim())
-            .service(redirect_to_docs)
             {%- for static_service in static_services %}
-            .route(
-                {{static_service.path | quote}},
-                web::{{static_service.method}}().to({{static_service.target}})
-            )
+            .route({{static_service.path | quote}}, {{static_service.method}}().to({{static_service.target}}))
             {%- endfor %}
             {%- for path in paths %}
-            .route(
-                {{path.path | quote}},
-                web::{{path.method}}().to(T::{{path.operation_id}})
-            )
+            .route({{path.path | quote}}, {{path.method}}().to(T::{{path.operation_id}}))
             {%- endfor %}
     })
     .bind(bind)?

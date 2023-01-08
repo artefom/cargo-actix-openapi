@@ -12,6 +12,9 @@ api:
     docs:
       data: !StaticHtmlPath
         data: DOCS_HTML
+    to_docs:
+      data: !Redirect
+        target: v1/docs
     GreetUserPath:
       data: !Struct
         doc: null
@@ -42,6 +45,9 @@ api:
   - method: Get
     path: /docs
     data: docs
+  - method: Get
+    path: /v1
+    data: to_docs
   - method: Get
     path: /v1/openapi.yaml
     data: openapi

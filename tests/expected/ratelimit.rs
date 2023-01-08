@@ -22,14 +22,14 @@ use async_trait::async_trait;
 // Struct
 // -------------------------------
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct QuotaDetailsPath {
     /// Quota label - Unique quota identifier
     pub quota: String,
 }
 
 /// Quota specification
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Quota {
     /// The 'weight' of a single cell in milliseconds or emission interval.
     /// Maximum allowed requests per minute can be calculated as: 60 * 1000 / replanish_interval
@@ -43,12 +43,12 @@ pub struct Quota {
     pub burst_capacity: i64,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct MatchRule {
 }
 
 /// State information of the quota
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct QuotaState {
     /// Earliest delay in ms from now when next cell is available
     pub earliest_next_available: f64,
@@ -57,14 +57,14 @@ pub struct QuotaState {
 }
 
 /// Quota statistics, purely descriptive. Not used in Rate limiting decisions.
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct QuotaStats {
     /// Number of requests in last 60 seconds
     pub rpm: i64,
 }
 
 /// Full information about quota
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct QuotaDetails {
     /// Quota specification
     pub quota: Quota,
@@ -79,7 +79,7 @@ pub struct QuotaDetails {
     pub stats: QuotaStats,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct CellTestQuery {
     /// Query that will be matched against quotas
     ///
@@ -124,7 +124,7 @@ pub struct CellTestQuery {
 /// Information about current cell state and matched quotas.
 /// Matched quotas are computed based on query.
 /// Info and state are computed dynamically based on matched quotas.
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct CellDetails {
     /// Matched quotas
     pub quotas: Vec<String>,
@@ -136,7 +136,7 @@ pub struct CellDetails {
 
 /// Information about current cell state.
 /// Info and state are computed dynamically based on matched quotas.
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct CellInfo {
     /// Quota specification
     pub info: Quota,
@@ -145,7 +145,7 @@ pub struct CellInfo {
 }
 
 /// Result of the cell update. Allowed/Denied flag + cell info
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct UpdateResult {
     /// Indicates if request was allowed
     /// If request was allowed, rate limit state was already updated to accomodate
@@ -159,6 +159,18 @@ pub struct UpdateResult {
 
 // Error with details
 // -------------------------------
+
+
+/// Create detailed errors with ease
+#[macro_export]
+macro_rules! detailed {
+    ($err:expr,$msg:expr) => {
+        $crate::server::api::Detailed {
+            error: $err,
+            details: $msg.to_string(),
+        }
+    };
+}
 
 /// Bails with detailed api error
 #[macro_export]
@@ -332,11 +344,9 @@ async fn docs() -> HttpResponse {
         .content_type("text/html; charset=utf-8")
         .body(DOCS_HTML)
 }
-
-#[get("/")]
-async fn redirect_to_docs() -> HttpResponse {
-    HttpResponse::build(StatusCode::PERMANENT_REDIRECT)
-        .append_header(("Location", "docs"))
+async fn to_docs() -> HttpResponse {
+    HttpResponse::build(StatusCode::TEMPORARY_REDIRECT)
+        .append_header(("Location", "v1/docs"))
         .body("")
 }
 
@@ -347,67 +357,27 @@ where
 {
     let app_data = web::Data::new(initial_state);
 
+    use web::{get,post,delete};
+
     HttpServer::new(move || {
         App::new()
             .app_data(app_data.clone())
             .wrap(NormalizePath::trim())
-            .service(redirect_to_docs)
-            .route(
-                "/openapi.yaml",
-                web::get().to(openapi)
-            )
-            .route(
-                "/docs",
-                web::get().to(docs)
-            )
-            .route(
-                "/v1/openapi.yaml",
-                web::get().to(openapi)
-            )
-            .route(
-                "/v1/docs",
-                web::get().to(docs)
-            )
-            .route(
-                "/health",
-                web::get().to(T::health)
-            )
-            .route(
-                "/v1/health",
-                web::get().to(T::health)
-            )
-            .route(
-                "/quota",
-                web::get().to(T::quota_list)
-            )
-            .route(
-                "/v1/quota",
-                web::get().to(T::quota_list)
-            )
-            .route(
-                "/quota/{quota}",
-                web::get().to(T::quota_details)
-            )
-            .route(
-                "/v1/quota/{quota}",
-                web::get().to(T::quota_details)
-            )
-            .route(
-                "/cell/test",
-                web::get().to(T::cell_test)
-            )
-            .route(
-                "/v1/cell/test",
-                web::get().to(T::cell_test)
-            )
-            .route(
-                "/cell/update",
-                web::post().to(T::cell_update)
-            )
-            .route(
-                "/v1/cell/update",
-                web::post().to(T::cell_update)
-            )
+            .route("/openapi.yaml", get().to(openapi))
+            .route("/docs", get().to(docs))
+            .route("/v1", get().to(to_docs))
+            .route("/v1/openapi.yaml", get().to(openapi))
+            .route("/v1/docs", get().to(docs))
+            .route("/health", get().to(T::health))
+            .route("/v1/health", get().to(T::health))
+            .route("/quota", get().to(T::quota_list))
+            .route("/v1/quota", get().to(T::quota_list))
+            .route("/quota/{quota}", get().to(T::quota_details))
+            .route("/v1/quota/{quota}", get().to(T::quota_details))
+            .route("/cell/test", get().to(T::cell_test))
+            .route("/v1/cell/test", get().to(T::cell_test))
+            .route("/cell/update", post().to(T::cell_update))
+            .route("/v1/cell/update", post().to(T::cell_update))
     })
     .bind(bind)?
     .run()

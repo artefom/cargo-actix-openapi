@@ -9,7 +9,7 @@ use crate::openapictx::OpenApiCtx;
 
 use self::types::{
     to_rust_identifier, Definition, DefinitionMaker, HttpMethod, Inlining, MaybeInlining,
-    OperationPath, RustOperation, StaticHtmlPath, StaticStr, StaticStringPath,
+    OperationPath, RustOperation, StaticHtmlPath, StaticRedirect, StaticStr, StaticStringPath,
 };
 
 /// Reference to ApiErr definition
@@ -222,6 +222,30 @@ pub fn extract_major_from_version(version: &str) -> Result<usize> {
     Ok(major)
 }
 
+fn add_redirect(
+    name: String,
+    version: usize,
+    path: String,
+    target: String,
+    defmaker: &mut DefinitionMaker,
+) -> Result<StaticService> {
+    let redirect: StaticRedirect = StaticRedirect { target };
+
+    let operation = defmaker.push(
+        name,
+        version,
+        types::Definition {
+            data: types::DefinitionData::Redirect(redirect),
+        },
+    )?;
+
+    Ok(StaticService {
+        data: operation,
+        path,
+        method: HttpMethod::Get,
+    })
+}
+
 pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustModule> {
     let mut operations = IndexMap::new();
     let mut paths = Vec::new();
@@ -252,6 +276,14 @@ pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustM
                 &mut defmaker,
             )?);
         }
+
+        static_services.push(add_redirect(
+            "to_docs".to_string(),
+            version,
+            format!("/v{version}"),
+            format!("v{version}/docs"),
+            &mut defmaker,
+        )?);
 
         static_services.extend(to_openapi_site(
             version,
@@ -289,6 +321,19 @@ pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustM
             }
         }
     }
+
+    // let Some(latest_version) = seen_version.iter().max() else {
+    //     bail!("Could not determine latest version to redirect to")
+    // };
+
+    
+    // static_services.push(add_redirect(
+    //     "to_latest_docs".to_string(),
+    //     1,
+    //     format!("/"),
+    //     format!("v{latest_version}/docs"),
+    //     &mut defmaker,
+    // )?);
 
     Ok(RustModule {
         api: ApiService {

@@ -975,6 +975,9 @@ impl<'a, 'b, 'c> DefinitionMaker<'a, 'b, 'c> {
         if self.dedup_store.contains_key(&name) {
             name = match def.data {
                 DefinitionData::DefaultProvider(_) => format!("{}_v{}", name, version),
+                DefinitionData::StaticHtmlPath(_) => format!("{}_v{}", name, version),
+                DefinitionData::StaticStringPath(_) => format!("{}_v{}", name, version),
+                DefinitionData::Redirect(_) => format!("{}_v{}", name, version),
                 _ => format!("{}V{}", name, version),
             };
         }
@@ -1125,6 +1128,12 @@ pub struct StaticHtmlPath {
     pub data: String,
 }
 
+/// Serves static html on given path
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct StaticRedirect {
+    pub target: String,
+}
+
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub enum DefinitionData {
     Struct(RStruct),
@@ -1134,6 +1143,7 @@ pub enum DefinitionData {
     StaticStr(StaticStr),
     StaticStringPath(StaticStringPath),
     StaticHtmlPath(StaticHtmlPath),
+    Redirect(StaticRedirect),
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
