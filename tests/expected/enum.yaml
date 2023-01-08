@@ -12,9 +12,12 @@ api:
     docs:
       data: !StaticHtmlPath
         data: DOCS_HTML
-    to_docs:
+    to_v1_docs:
       data: !Redirect
         target: v1/docs
+    to_docs:
+      data: !Redirect
+        target: docs
     GreetUserPath:
       data: !Struct
         doc: null
@@ -58,9 +61,6 @@ api:
           default: null
           type_: i64
           doc: Integer enum example
-    to_docs_noprefix:
-      data: !Redirect
-        target: docs
   operations:
     greet_user:
       doc: Returns a greeting to the user!
@@ -78,7 +78,7 @@ api:
   static_services:
   - method: Get
     path: /
-    data: to_docs_noprefix
+    data: to_docs
   - method: Get
     path: /docs
     data: docs
@@ -87,6 +87,9 @@ api:
     data: openapi
   - method: Get
     path: /v1
+    data: to_v1_docs
+  - method: Get
+    path: /v1/
     data: to_docs
   - method: Get
     path: /v1/docs

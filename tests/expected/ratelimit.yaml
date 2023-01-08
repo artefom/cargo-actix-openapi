@@ -12,9 +12,12 @@ api:
     docs:
       data: !StaticHtmlPath
         data: DOCS_HTML
-    to_docs:
+    to_v1_docs:
       data: !Redirect
         target: v1/docs
+    to_docs:
+      data: !Redirect
+        target: docs
     QuotaDetailsPath:
       data: !Struct
         doc: null
@@ -229,9 +232,6 @@ api:
           doc: |
             Information about current cell state.
             Info and state are computed dynamically based on matched quotas.
-    to_docs_noprefix:
-      data: !Redirect
-        target: docs
   operations:
     health:
       doc: Check service health
@@ -297,7 +297,7 @@ api:
   static_services:
   - method: Get
     path: /
-    data: to_docs_noprefix
+    data: to_docs
   - method: Get
     path: /docs
     data: docs
@@ -306,6 +306,9 @@ api:
     data: openapi
   - method: Get
     path: /v1
+    data: to_v1_docs
+  - method: Get
+    path: /v1/
     data: to_docs
   - method: Get
     path: /v1/docs

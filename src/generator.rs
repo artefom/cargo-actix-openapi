@@ -1,7 +1,6 @@
 use indexmap::IndexMap;
-use openapiv3::OpenAPI;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 
 mod models;
 mod templates;

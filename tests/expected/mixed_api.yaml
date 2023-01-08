@@ -12,9 +12,12 @@ api:
     docs:
       data: !StaticHtmlPath
         data: DOCS_HTML
-    to_docs:
+    to_v1_docs:
       data: !Redirect
         target: v1/docs
+    to_docs:
+      data: !Redirect
+        target: docs
     GreetUserPath:
       data: !Struct
         doc: null
@@ -33,7 +36,7 @@ api:
           default: null
           type_: String
           doc: null
-    to_docs_v2:
+    to_v2_docs:
       data: !Redirect
         target: v2/docs
     DOCS_OPENAPIV2:
@@ -92,7 +95,7 @@ api:
   static_services:
   - method: Get
     path: /
-    data: to_docs_v2
+    data: to_v2_docs
   - method: Get
     path: /docs
     data: docs
@@ -101,6 +104,9 @@ api:
     data: openapi
   - method: Get
     path: /v1
+    data: to_v1_docs
+  - method: Get
+    path: /v1/
     data: to_docs
   - method: Get
     path: /v1/docs
@@ -110,7 +116,10 @@ api:
     data: openapi
   - method: Get
     path: /v2
-    data: to_docs_v2
+    data: to_v2_docs
+  - method: Get
+    path: /v2/
+    data: to_docs
   - method: Get
     path: /v2/docs
     data: docs

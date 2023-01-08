@@ -278,10 +278,18 @@ pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustM
         }
 
         static_services.push(add_redirect(
-            "to_docs".to_string(),
+            format!("to_v{version}_docs"),
             version,
             format!("/v{version}"),
             format!("v{version}/docs"),
+            &mut defmaker,
+        )?);
+
+        static_services.push(add_redirect(
+            "to_docs".to_string(),
+            version,
+            format!("/v{version}/"),
+            format!("docs"),
             &mut defmaker,
         )?);
 
@@ -329,7 +337,7 @@ pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustM
     // Add redirect to latest docs
     if latest_version == 1 {
         static_services.push(add_redirect(
-            "to_docs_noprefix".to_string(),
+            "to_docs".to_string(),
             latest_version,
             format!("/"),
             format!("docs"),
@@ -337,7 +345,7 @@ pub fn to_rust_module(doc_path: &str, specs: &[OpenApiWithPath]) -> Result<RustM
         )?);
     } else {
         static_services.push(add_redirect(
-            "to_latest_docs".to_string(),
+            format!("to_v{latest_version}_docs"),
             latest_version,
             format!("/"),
             format!("v{latest_version}/docs"),

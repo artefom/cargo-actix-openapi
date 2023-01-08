@@ -596,7 +596,6 @@ fn get_discriminator_prop(
     schema_orig: &Schema,
     discriminator: &String,
     ctx: &OpenApiCtx<'_>,
-    defmaker: &mut DefinitionMaker,
 ) -> Result<(String, Schema)> {
     let SchemaKind::Type(ref schema) = schema_orig.schema_kind else {
         bail!("Only object can have discriminator property")
@@ -666,8 +665,7 @@ fn one_of_to_inline_type(
         Some(discriminator) => {
             let discriminator = discriminator_property(discriminator)?;
             for schema in schemas {
-                let (variant_name, schema) =
-                    get_discriminator_prop(schema, &discriminator, ctx, defmaker)?;
+                let (variant_name, schema) = get_discriminator_prop(schema, &discriminator, ctx)?;
 
                 let schema_inlined = schema
                     .inline(
