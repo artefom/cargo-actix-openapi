@@ -1067,7 +1067,7 @@ impl Display for InlineType {
             InlineType::Query(item) => write!(f, "web::Query<{item}>"),
             InlineType::Option(item) => write!(f, "Option<{item}>"),
             InlineType::Reference(item) => Display::fmt(&item, f),
-            InlineType::Result(ok, err) => write!(f, "Result<{ok},{err}>"),
+            InlineType::Result(ok, err) => write!(f, "Result<{ok}, {err}>"),
             InlineType::Detailed(item) => write!(f, "Detailed<{item}>"),
         }
     }

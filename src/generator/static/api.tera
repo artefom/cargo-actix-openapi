@@ -19,7 +19,7 @@ use actix_web::{
     web, App, HttpRequest, HttpResponse, HttpServer, ResponseError,
 };
 
-use actix_web_prom::PrometheusMetricsBuilder;
+use actix_web_prom::{PrometheusMetrics, PrometheusMetricsBuilder};
 
 use async_trait::async_trait;
 
@@ -180,44 +180,77 @@ async fn health() -> HttpResponse {
     HttpResponse::Ok().finish()
 }
 
-pub async fn run_service<T, S>(bind: &str, initial_state: S) -> Result<(), std::io::Error>
+#[derive(Debug)]
+pub enum RunServiceError {
+    Prometheus(String),
+    Bind(std::io::Error),
+    Runtime(std::io::Error),
+}
+
+impl Display for RunServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&match self {
+            RunServiceError::Prometheus(message) => message.to_string(),
+            RunServiceError::Bind(err) => err.to_string(),
+            RunServiceError::Runtime(err) => err.to_string(),
+        })
+    }
+}
+
+impl std::error::Error for RunServiceError {}
+
+
+/// Just make scope - can be used for manual server creation
+/// And to combine with other scopes
+pub fn make_scope<T, S>(prometheus: PrometheusMetrics) -> actix_web::Scope
+where
+    T: ApiService<S> + 'static,
+    S: Send + Sync + 'static,
+{
+    use web::{delete, get, post};
+
+    let api = web::scope("")
+        {%- for path in paths %}
+        .route({{path.path | quote}}, {{path.method}}().to(T::{{path.operation_id}}))
+        {%- endfor %}
+        .wrap(prometheus);
+
+    web::scope("")
+        // Aux services
+        .route("/health", get().to(health))
+        // Static paths
+        {%- for static_service in static_services %}
+        .route({{static_service.path | quote}}, {{static_service.method}}().to({{static_service.target}}))
+        {%- endfor %}
+        // Server routes
+        .service(api)
+}
+
+
+pub async fn run_service<T, S>(bind: &str, initial_state: S) -> Result<(), RunServiceError>
 where
     T: ApiService<S> + 'static,
     S: Send + Sync + 'static,
 {
     let app_data = web::Data::new(initial_state);
 
+    let registry = prometheus::default_registry();
+
     let prometheus = PrometheusMetricsBuilder::new("api")
         .endpoint("/metrics")
+        .registry_ref(registry)
         .build()
-        .unwrap();
-
-    use web::{delete, get, post};
+        .map_err(|e| RunServiceError::Prometheus(e.to_string()))?;
 
     HttpServer::new(move || {
-
-        let api = web::scope("")
-            .wrap(prometheus.clone())
-            {%- for path in paths %}
-            .route({{path.path | quote}}, {{path.method}}().to(T::{{path.operation_id}}))
-            {%- endfor %}
-            .wrap(prometheus.clone());
-
-        App::new()
-            .app_data(app_data.clone())
-            .wrap(NormalizePath::new(TrailingSlash::MergeOnly))
-            // Aux services
-            .route("/health", get().to(health))
-            // Static paths
-            {%- for static_service in static_services %}
-            .route({{static_service.path | quote}}, {{static_service.method}}().to({{static_service.target}}))
-            {%- endfor %}
-            // Server routes
-            .service(api)
+        let scope = make_scope::<T, S>(prometheus.clone());
+        App::new().app_data(app_data.clone()).service(scope)
     })
-    .bind(bind)?
+    .bind(bind)
+    .map_err(RunServiceError::Bind)?
     .run()
-    .await?;
+    .await
+    .map_err(RunServiceError::Runtime)?;
 
     Ok(())
 }
