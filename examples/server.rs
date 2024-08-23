@@ -11,9 +11,9 @@ use thiserror::Error;
 pub enum RunServiceError {
     #[error("Prometheus error {0}")]
     Prometheus(String),
-    #[error("Prometheus error {0}")]
+    #[error("Binding error {0}")]
     Bind(std::io::Error),
-    #[error("Prometheus error {0}")]
+    #[error("Runtime error {0}")]
     Runtime(std::io::Error),
 }
 
