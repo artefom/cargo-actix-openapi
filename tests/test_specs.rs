@@ -55,12 +55,10 @@ fn test_specs(#[case] case_name: &str) -> Result<()> {
     let expected_filename = format!("tests/expected/{case_name}.rs");
     let expected_model = format!("tests/expected/{case_name}.yaml");
 
-    let mut specs = Vec::new();
-
-    specs.push(OpenapiWithMeta {
+    let specs = vec![OpenapiWithMeta {
         content: read_to_string(filename)?,
         path: "static/openapi.yaml".to_string(),
-    });
+    }];
 
     let (got_model, got) = cargo_actix_openapi::generate_api("static/docs.html", &specs)?;
 

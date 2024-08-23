@@ -496,7 +496,7 @@ pub fn to_rust_identifier(val: &str, case: Case) -> String {
         result = "_".to_string()
     }
 
-    if let Some(value) = result.chars().into_iter().next() {
+    if let Some(value) = result.chars().next() {
         if value.is_numeric() {
             result = format!("_{result}")
         }
