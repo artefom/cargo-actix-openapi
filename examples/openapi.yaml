@@ -1,0 +1,50 @@
+openapi: "3.0.3"
+info:
+  version: "1.0"
+  title: "journey-planner"
+servers:
+  - url: ./
+paths:
+  /health:
+    get:
+      operationId: health
+      tags:
+        - health
+      summary: Service Health check
+      responses:
+        "200":
+          description: List of snapshot keys for carrier
+          content:
+            application/json:
+              schema:
+                title: Health response
+                type: string
+                enum: ["Ok"]
+  /hello/{user}:
+    get:
+      operationId: hello_user
+      tags:
+        - api
+      description: Returns a greeting to the user!
+      parameters:
+        - name: user
+          in: path
+          required: true
+          description: The name of the user to greet.
+          schema:
+            type: string
+      responses:
+        200:
+          description: Returns the greeting.
+          content:
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid characters in "user" were provided.
+          content:
+            application/json:
+              schema:
+                title: Details
+                type: string
+                enum: ["Invalid characters"]
