@@ -275,7 +275,7 @@ impl Inlining for IndexMap<&StatusCode, &ReferenceOr<Response>> {
 }
 
 fn is_success(code: &StatusCode) -> bool {
-    match code.deref() {
+    match code {
         StatusCode::Code(value) => (&200..&300).contains(&value),
         StatusCode::Range(value) => (&200..&300).contains(&value),
     }
@@ -793,9 +793,7 @@ fn make_default_provider(
     type_: &InlineType,
     defmaker: &mut DefinitionMaker,
 ) -> Result<Option<InlineType>> {
-    let Some(val) = val else {
-        return Ok(None)
-    };
+    let Some(val) = val else { return Ok(None) };
 
     let (inner_type, optional) = match type_ {
         InlineType::Option(inner) => (inner.as_ref(), true),
