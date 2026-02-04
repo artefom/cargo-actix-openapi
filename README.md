@@ -1,62 +1,79 @@
-# Actix-Web openapi generator for rust.
+# Actix-Web OpenAPI Generator for Rust
 
-Generates an actix-web server from openapi configuration.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-It's purpose is to provide a FastAPI-like ease of use to rust webservers.
+Generates an actix-web server from OpenAPI 3.0.3 specifications.
 
-It is based on generation of two things:
-1. **api service trait**
-    A trait containing all of the methods described on the openapi
-    and response models that are rust structs supporting serialize/deserialize
+Its purpose is to provide a FastAPI-like ease of use to Rust web servers.
 
-    The models for parsing api parameters will also be generated.
+It generates two things:
 
-    This trait guarantees that any object implementing it and registered
-    into actix web scope will adhere to the openapi specification.
+1. **API Service Trait** - A trait containing all methods described in the OpenAPI spec, along with request/response models as Rust structs supporting serialize/deserialize. This trait guarantees that any implementation registered into an Actix-web scope will adhere to the OpenAPI specification.
 
-2. **scope creator** - that would create actix web scope from an implementation of the trait
+2. **Scope Creator** - A `make_scope` function that creates an Actix-web scope from your trait implementation.
 
+## Example
 
 Here is a simplified example of what this package allows you to do:
 
 ```rust
-struct DefaultServer;
+use actix_web::{web, App, HttpServer};
+use actix_web_prom::PrometheusMetricsBuilder;
 
-// ApiService is a trait that is auto-generated based
-// on the openapi.yaml spec
-impl api::ApiService for DefaultServer
-{
-    // implement api methods here
+// Your application state
+struct AppState {
+    // your state fields
+}
 
-    /// Service Health check
-    async fn health(_data: web::Data<S>) -> web::Json<HealthResponse> {
-        return web::Json(HealthResponse::Ok);
+struct MyServer;
+
+// ApiService is a trait auto-generated from your openapi.yaml spec
+// The state type parameter allows access to your application state
+impl api::ApiService<AppState> for MyServer {
+    async fn health(
+        data: web::Data<AppState>,
+    ) -> web::Json<HealthResponse> {
+        web::Json(HealthResponse::Ok)
+    }
+
+    async fn hello_user(
+        data: web::Data<AppState>,
+        path: web::Path<HelloUserPath>,
+    ) -> Result<web::Json<String>, Detailed<HelloUserError>> {
+        let user = &path.user;
+
+        if !user.chars().all(|c| c.is_ascii_alphanumeric()) {
+            apibail!(
+                HelloUserError::InvalidCharacters,
+                "Found non-ascii-alphanumeric characters"
+            );
+        }
+
+        Ok(web::Json(format!("Hello, {}!", user)))
     }
 }
 
-...
+// In your main function:
+let prometheus = PrometheusMetricsBuilder::new("api")
+    .endpoint("/metrics")
+    .build()
+    .unwrap();
 
-// make_scope is auto-generated. We're passing here our api implementation
-let scope = api::make_scope::<DefaultServer>();
+// make_scope is auto-generated - pass your implementation type and state type
+let scope = api::make_scope::<MyServer, AppState>(prometheus);
+
 App::new()
-    .app_data(app_data.clone())
-    .wrap(cors)
+    .app_data(web::Data::new(AppState { /* ... */ }))
     .service(scope)
 ```
 
+The code for running the server itself is application-specific and not auto-generated. See the `examples/` folder for a complete working example.
 
-The code that you must provide yourself is running the server itself.
-It is very application-specific and thus is out of scope of automatic generation.
+## Error Handling
 
-You may find the default code for running server that would utilise the
-generated spec in the examples folder
+Generated API supports custom error types mapped to HTTP status codes. Two convenience macros are generated:
 
-
-
-Generated API supports custom error types and natively maps them to rust error enums.
-A convenience macro `apibail` can be used to return quickly an error to user
-
-
+**`apibail!`** - Return an error immediately:
 ```rust
 apibail!(
     HelloUserError::InvalidCharacters,
@@ -64,51 +81,72 @@ apibail!(
 )
 ```
 
-# Installation
-
-To install this script, first checkout it
-`git clone <this repo>`
-
-And then install
-
-`cargo install --path .`
-
-# Usage
-
-First, create the following directory structure
+**`detailed!`** - Create a detailed error without returning:
+```rust
+let err = detailed!(HelloUserError::InvalidCharacters, "Invalid input");
 ```
-src
-    server
-        static
+
+## Interactive Documentation
+
+The generator creates a `docs.html` file that provides interactive API documentation. It's automatically served at `/docs` and `/v1/docs` endpoints alongside your API.
+
+## Installation
+
+Clone and install:
+
+```bash
+git clone <this repo>
+cargo install --path .
+```
+
+## Usage
+
+Create the following directory structure:
+
+```
+src/
+    server/
+        static/
             openapi.yaml
         mod.rs
 ```
 
-You can find default openapi.yaml and mod.rs file in the examples folder.
+You can find example `openapi.yaml` and implementation files in the `examples/` folder.
 
+Run the generator:
 
-And then run command
+```bash
+cargo actix-openapi src/server/static src/server/api.rs
+```
 
-`cargo actix-openapi src/server/static src/server/api.rs`
-
-It will generate file `api.rs` and `docs.html` and you will have the following structure:
+This generates `api.rs` and `docs.html`:
 
 ```
-src
-    server
-        static
-            docs.html
+src/
+    server/
+        static/
+            docs.html      # Generated interactive docs
             openapi.yaml
-        api.rs
+        api.rs             # Generated API code
         mod.rs
 ```
 
-After that, consider file `api.rs` to be fully maintained by this automatic tool.
+**Important:** The `api.rs` file is fully managed by this tool. Do not manually edit it - your changes will be overwritten when you regenerate.
 
-Making any migrations and re-running the generator will create new models in the `api.rs`
-file.
+Your job is to implement the `ApiService` trait defined in `api.rs`.
 
-Your job will be to implement methods of trait `ApiService` defined in `api.rs` 
+## Required Dependencies
 
-As an input it accepts path to `static` directory
+The generated code requires these dependencies in your `Cargo.toml`:
 
+```toml
+[dependencies]
+actix-web = "4"
+actix-web-prom = "0.6"  # For PrometheusMetrics
+async-trait = "0.1"      # For async trait support
+serde = { version = "1", features = ["derive"] }
+```
+
+## Module Path Constraint
+
+The generated `apibail!` and `detailed!` macros reference `$crate::server::api::Detailed`. This means your generated `api.rs` must be located at `src/server/api.rs` for the macros to work correctly.
