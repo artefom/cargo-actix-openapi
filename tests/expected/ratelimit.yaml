@@ -250,19 +250,19 @@ api:
       param_path: web::Path<QuotaDetailsPath>
       param_query: null
       param_body: null
-      response: Result<web::Json<QuotaDetails>,Detailed<QuotaDetailsError>>
+      response: Result<web::Json<QuotaDetails>, Detailed<QuotaDetailsError>>
     cell_test:
       doc: Get current rate limitation state for given query
       param_path: null
       param_query: web::Query<CellTestQuery>
       param_body: null
-      response: Result<web::Json<CellDetails>,Detailed<CellTestError>>
+      response: Result<web::Json<CellDetails>, Detailed<CellTestError>>
     cell_update:
       doc: Try to accomodate for one request
       param_path: null
       param_query: web::Query<CellTestQuery>
       param_body: null
-      response: Result<web::Json<UpdateResult>,Detailed<CellTestError>>
+      response: Result<web::Json<UpdateResult>, Detailed<CellTestError>>
   paths:
   - operation: cell_test
     path: /cell/test

@@ -213,7 +213,12 @@ where
 {
     let mut splitted = obj_ref.split('/');
 
-    let (Some(hashsymbol),Some(comp),Some(namespace),Some(ref_name)) = (splitted.next(), splitted.next(), splitted.next(), splitted.next()) else {
+    let (Some(hashsymbol), Some(comp), Some(namespace), Some(ref_name)) = (
+        splitted.next(),
+        splitted.next(),
+        splitted.next(),
+        splitted.next(),
+    ) else {
         bail!("Invalid reference")
     };
 

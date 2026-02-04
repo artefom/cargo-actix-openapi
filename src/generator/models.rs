@@ -214,7 +214,7 @@ pub fn extract_major_from_version(version: &str) -> Result<usize> {
     let mut version_elements = version.split('.');
 
     let Some(major) = version_elements.next() else {
-        bail!("Could not understand major from string {:?}",version);
+        bail!("Could not understand major from string {:?}", version);
     };
     let major: usize = major
         .parse()
