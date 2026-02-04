@@ -3,7 +3,8 @@ name = "cargo-actix-openapi"
 version = "1.0.0"
 edition = "2021"
 description = "Generates actix-web implementation for the given openapi spec"
-
+license = "MIT"
+authors = ["Artyom Fomenko"]
 
 [dependencies]
 anyhow = "1.0.68"

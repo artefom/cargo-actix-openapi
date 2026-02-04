@@ -33,14 +33,14 @@ fn is_openapi_spec(path: &Path) -> bool {
     let Some(stem) = path.file_stem() else {
         return false;
     };
-    return extension == "yaml" && stem.to_string_lossy().contains("openapi");
+    extension == "yaml" && stem.to_string_lossy().contains("openapi")
 }
 
 fn is_doc_page(path: &Path) -> bool {
     let Some(filename) = path.file_name() else {
         return false;
     };
-    filename.to_ascii_lowercase() == "docs.html"
+    filename.eq_ignore_ascii_case("docs.html")
 }
 
 fn prompt_user(message: &str) -> Result<bool> {
